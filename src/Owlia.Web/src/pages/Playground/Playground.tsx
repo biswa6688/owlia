@@ -11,7 +11,8 @@ import { joinSession, leaveSession } from '../../api/signalr'
 import { TranscriptList } from '../../components/Transcript/TranscriptList'
 import { SentimentView } from '../../components/Sentiment/SentimentView'
 import { SummaryView } from '../../components/Summary/SummaryView'
-import { VoiceSpectrum } from '../../components/VoiceSpectrum/VoiceSpectrum'
+import { WaveformPlayer } from '../../components/WaveformPlayer/WaveformPlayer'
+import { Spectrogram } from '../../components/Spectrogram/Spectrogram'
 import { CliPanel } from '../../components/Cli/CliPanel'
 import { ModelGate } from '../../components/UI/ModelGateBanner'
 import { ProgressBar } from '../../components/UI/ProgressBar'
@@ -45,6 +46,7 @@ export function Playground() {
   const [fullscreen, setFullscreen] = useState(false)
   const [subtitle, setSubtitle]     = useState('')
   const [dragging, setDragging]     = useState(false)
+  const [showSpectrogram, setShowSpectrogram] = useState(false)
 
   useEffect(() => { refreshModels() }, [refreshModels])
 
@@ -253,15 +255,23 @@ export function Playground() {
             maxWidth: '75%', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)',
             borderRadius: 8, padding: '5px 14px', fontSize: '0.85rem',
             fontWeight: 500, color: 'var(--text)', textAlign: 'center', pointerEvents: 'none',
+            zIndex: 12,
           }}>
             {subtitle}
           </div>
         )}
+
+        {/* Spectrogram overlay */}
+        <Spectrogram mediaRef={videoRef} visible={showSpectrogram} />
       </div>
 
-      {/* ── Spectrum ──────────────────────────────────────────────────────── */}
-      <div style={{ height: 28, flexShrink: 0, margin: '0 clamp(12px, 3vw, 40px)', background: 'var(--player-bg)', borderRadius: '0 0 6px 6px', marginTop: -1 }}>
-        <VoiceSpectrum mediaRef={videoRef} isPlaying={playing} height={28} barColor="var(--accent)" barCount={80} />
+      {/* ── Waveform (WaveSurfer.js) ─────────────────────────────────────── */}
+      <div style={{ flexShrink: 0, margin: '0 clamp(12px, 3vw, 40px)', background: 'var(--player-bg)', borderRadius: 6, padding: '4px 8px', border: '1px solid var(--border)' }}>
+        <WaveformPlayer
+          mediaRef={videoRef}
+          currentSec={currentSec}
+          onSeek={sec => { if (videoRef.current) videoRef.current.currentTime = sec }}
+        />
       </div>
 
       {/* ── Controls ──────────────────────────────────────────────────────── */}
@@ -352,6 +362,28 @@ export function Playground() {
 
           <button onClick={toggleFs} style={iconBtn()}>
             {fullscreen ? <Minimize size={12} /> : <Maximize size={12} />}
+          </button>
+
+          {/* Spectrogram toggle */}
+          <button
+            onClick={() => setShowSpectrogram(v => !v)}
+            style={{
+              ...iconBtn(),
+              borderRadius: 100, padding: '3px 8px', fontSize: '0.65rem', gap: 3,
+              display: 'flex', alignItems: 'center',
+              border: showSpectrogram ? '1px solid var(--accent)' : '1px solid var(--border)',
+              color: showSpectrogram ? 'var(--accent)' : 'var(--text)',
+              background: showSpectrogram ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent',
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="3" />
+              <line x1="6" y1="18" x2="6" y2="12" />
+              <line x1="10" y1="18" x2="10" y2="8" />
+              <line x1="14" y1="18" x2="14" y2="14" />
+              <line x1="18" y1="18" x2="18" y2="6" />
+            </svg>
+            <span className="hidden sm:inline">Spectrogram</span>
           </button>
         </div>
       </div>

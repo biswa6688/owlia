@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Minimize2, Maximize2, Plus, ChevronDown, GripHorizontal,
-  Square, Video, Activity, AudioLines,
+  Square, Video, Activity, AudioLines, AlertTriangle,
 } from '../Icons/icons'
 import WaveSurfer from 'wavesurfer.js'
 
@@ -386,7 +386,7 @@ export function FloatingPlayer({
                   Analyse
                 </button>
               )}
-              {needsModel && <span style={{ fontSize: '0.58rem', color: 'var(--accent-copper)' }}>⚠ Models</span>}
+              {needsModel && <span style={{ fontSize: '0.58rem', color: 'var(--accent-copper)', display: 'flex', alignItems: 'center', gap: 2 }}><AlertTriangle size={10} /> Models</span>}
             </div>
 
             {isAnalysing && (

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Mic, Users, BarChart2, FileText, Volume2, Terminal,
   ChevronDown, ArrowRight, Check, Zap, Shield, Cpu,
+  Video, Sparkles, Lock,
 } from '../../components/Icons/icons'
 import { Nav } from '../../components/Nav/Nav'
 
@@ -58,11 +59,11 @@ const FEATURES = [
 ]
 
 const STEPS = [
-  { n: 1, icon: '🎬', title: 'Drop any media', body: 'Drag an audio or video file — MP3, WAV, MP4, MKV, WebM and more. ffmpeg handles any codec.' },
-  { n: 2, icon: '🔊', title: 'Voice detection', body: 'Silero VAD finds the exact speech segments, skipping silence and background noise.' },
-  { n: 3, icon: '📝', title: 'Transcription', body: 'Whisper large-v3 converts each segment to text with millisecond-accurate word timestamps.' },
-  { n: 4, icon: '👥', title: 'Speaker ID', body: 'pyannote segments the audio; WeSpeaker embeds each speaker; agglomerative clustering assigns names.' },
-  { n: 5, icon: '✨', title: 'Analysis', body: 'RoBERTa scores sentiment per sentence. BART summarizes. Everything saves to your local SQLite history.' },
+  { n: 1, icon: Video, title: 'Drop any media', body: 'Drag an audio or video file — MP3, WAV, MP4, MKV, WebM and more. ffmpeg handles any codec.' },
+  { n: 2, icon: Volume2, title: 'Voice detection', body: 'Silero VAD finds the exact speech segments, skipping silence and background noise.' },
+  { n: 3, icon: FileText, title: 'Transcription', body: 'Whisper large-v3 converts each segment to text with millisecond-accurate word timestamps.' },
+  { n: 4, icon: Users, title: 'Speaker ID', body: 'pyannote segments the audio; WeSpeaker embeds each speaker; agglomerative clustering assigns names.' },
+  { n: 5, icon: Sparkles, title: 'Analysis', body: 'RoBERTa scores sentiment per sentence. BART summarizes. Everything saves to your local SQLite history.' },
 ]
 
 const PILLARS = [
@@ -224,7 +225,7 @@ export function Landing() {
                     fontFamily: 'monospace',
                   }}
                 >
-                  <span style={{ color: 'var(--accent)', marginRight: 5 }}>🔒</span>
+                  <span style={{ color: 'var(--accent)', marginRight: 5 }}><Lock size={11} /></span>
                   localhost:5173/playground
                 </div>
               </div>
@@ -551,10 +552,10 @@ export function Landing() {
                 >
                   {step.n}
                 </div>
-                {/* Emoji + text */}
+                {/* Icon + text */}
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.25rem' }}>
-                    {step.icon} {step.title}
+                  <p style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <step.icon size={16} style={{ color: 'var(--accent)' }} /> {step.title}
                   </p>
                   <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
                     {step.body}

@@ -233,3 +233,14 @@ export const AlertTriangle = icMulti([
   'M12 9v4',
   'M12 17h.01',
 ])
+
+export const Sparkles = icMulti([
+  'M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z',
+  'M19 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z',
+  'M5 17l0.5 1.5L7 19l-1.5 0.5L5 21l-0.5-1.5L3 19l1.5-0.5L5 17z',
+])
+
+export const Lock = icMulti([
+  'M7 11V7a5 5 0 0110 0v4',
+  'M5 11h14a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7a2 2 0 012-2z',
+])

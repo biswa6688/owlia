@@ -24,18 +24,32 @@ export function Playground() {
   const [midPct, setMidPct]         = useState(34)
   const containerRef                = useRef<HTMLDivElement>(null)
   const dragging                    = useRef<'left' | 'mid' | null>(null)
+  const dragStartX                  = useRef(0)
+  const dragStartLeft               = useRef(0)
+  const dragStartMid                = useRef(0)
+
+  const startDrag = (which: 'left' | 'mid') => (e: React.MouseEvent) => {
+    dragging.current = which
+    dragStartX.current = e.clientX
+    dragStartLeft.current = leftPct
+    dragStartMid.current = midPct
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (!dragging.current || !containerRef.current) return
-      const rect = containerRef.current.getBoundingClientRect()
-      const pct = ((e.clientX - rect.left) / rect.width) * 100
+      const dx = e.clientX - dragStartX.current
+      const dw = containerRef.current.getBoundingClientRect().width
+      const dpct = (dx / dw) * 100
+
       if (dragging.current === 'left') {
-        setLeftPct(Math.min(60, Math.max(15, pct)))
+        const next = Math.min(60, Math.max(15, dragStartLeft.current + dpct))
+        setLeftPct(next)
       } else {
-        const available = 100 - leftPct
-        const midFromLeft = pct - leftPct
-        setMidPct(Math.min(available - 10, Math.max(10, midFromLeft)))
+        const next = Math.min(100 - leftPct - 10, Math.max(10, dragStartMid.current + dpct))
+        setMidPct(next)
       }
     }
     const onUp = () => { dragging.current = null; document.body.style.cursor = ''; document.body.style.userSelect = '' }
@@ -135,7 +149,7 @@ export function Playground() {
 
   const Divider = ({ which }: { which: 'left' | 'mid' }) => (
     <div
-      onMouseDown={() => { dragging.current = which; document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none' }}
+      onMouseDown={startDrag(which)}
       style={{ width: 5, flexShrink: 0, cursor: 'col-resize', background: 'var(--border)', transition: 'background 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       onMouseEnter={e => { if (!dragging.current) e.currentTarget.style.background = 'var(--accent)' }}
       onMouseLeave={e => { if (!dragging.current) e.currentTarget.style.background = 'var(--border)' }}

@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — Semantic Ve
 
 ## [Unreleased]
 
+### Changed — Session 9 (Summarization → LLamaSharp)
+
+- Summarization now runs on a small local instruct LLM (Qwen2.5-1.5B-Instruct, GGUF) via LLamaSharp/llama.cpp instead of hand-rolled BART ONNX. The previous `SummaryRunner` tokenizer was a placeholder char-mapping hack, not real BPE — this replaces it entirely. Summary, keywords, and takeaways are all produced by a single prompted inference call in a fixed labeled-section format (`SUMMARY:`/`KEYWORDS:`/`TAKEAWAYS:`), parsed with simple string splitting. Model id renamed `bart-cnn` → `summary-llm` throughout (manifest, `TranscriptService`, frontend `modelStore`/`Download` page).
+- Functionally verified against the real `SummaryRunner` class (not a reimplementation) with a real multi-speaker transcript: coherent one-paragraph summary, 5 clean keywords, 3 clean numbered takeaways, ~6-10s on CPU.
+- This completes the 3-part engine-swap plan agreed earlier this session: Whisper → Whisper.net, VAD+diarization → sherpa-onnx, Summarization → LLamaSharp — all three done and functionally verified the same day. TTS → sherpa-onnx Kokoro remains deferred (BL-152, archive-format blocker).
+
 ### Changed — Session 8 (VAD + diarization → sherpa-onnx)
 
 - Voice activity detection and speaker diarization now run on sherpa-onnx (`org.k2fsa.sherpa.onnx`) instead of hand-rolled ONNX. `SileroVadRunner` rewritten around the real `VoiceActivityDetector` API (verified via compile-driven discovery + the project's own real dotnet-examples source, not guessed). `EmbeddingRunner`, `SegmentationRunner`, and `SpeakerClusterer` (whose agglomerative clustering was never independently verified) are retired — replaced by a single `DiarizationRunner` wrapping `OfflineSpeakerDiarization`, which does segmentation, embedding, and clustering internally in one `Process()` call. `TranscriptService`'s diarization step now runs diarization once over the full audio and assigns each transcript segment the speaker of whichever diarization segment overlaps it most, instead of extracting one embedding per transcript segment.

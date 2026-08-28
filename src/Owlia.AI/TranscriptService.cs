@@ -222,15 +222,13 @@ public sealed class TranscriptService : ITranscriptService
         // speech segments — silence and non-speech noise are excluded by VAD.
         var speechSeconds = vadSegments.Sum(v => v.EndSec - v.StartSec);
         var speechPercentage = totalSec > 0 ? Math.Round(Math.Min(100.0, speechSeconds / totalSec * 100), 1) : 0;
-        var bartPaths = _models.GetModelPaths("bart-cnn");
+        var summaryModelPath = _models.GetModelPath("summary-llm");
 
         SummaryEntity summaryEntity;
-        if (bartPaths.All(File.Exists) && !string.IsNullOrWhiteSpace(fullText))
+        if (File.Exists(summaryModelPath) && !string.IsNullOrWhiteSpace(fullText))
         {
-            var bartEncoderPath = bartPaths.First(p => p.EndsWith("encoder_model.onnx"));
-            var bartDecoderPath = bartPaths.First(p => p.EndsWith("decoder_model.onnx"));
-            using var summaryRunner = new SummaryRunner(bartEncoderPath, bartDecoderPath);
-            var (summaryText, keywords, takeaways) = summaryRunner.Summarize(fullText);
+            using var summaryRunner = new SummaryRunner(summaryModelPath);
+            var (summaryText, keywords, takeaways) = await summaryRunner.SummarizeAsync(fullText, ct);
             summaryEntity = new SummaryEntity
             {
                 Id = Guid.NewGuid().ToString("N"),

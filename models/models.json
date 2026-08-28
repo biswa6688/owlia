@@ -40,12 +40,11 @@
     ]
   },
   {
-    "id": "bart-cnn",
-    "displayName": "BART Large CNN (Facebook)",
+    "id": "summary-llm",
+    "displayName": "Qwen2.5-1.5B-Instruct (GGUF, llama.cpp)",
     "feature": "Summarization",
     "files": [
-      { "fileName": "bart-cnn/encoder_model.onnx", "sizeBytes": 814942257, "sha256": "", "url": "https://huggingface.co/Xenova/bart-large-cnn/resolve/main/onnx/encoder_model.onnx" },
-      { "fileName": "bart-cnn/decoder_model.onnx", "sizeBytes": 1017091776, "sha256": "", "url": "https://huggingface.co/Xenova/bart-large-cnn/resolve/main/onnx/decoder_model.onnx" }
+      { "fileName": "qwen2.5-1.5b-instruct-q5_k_m.gguf", "sizeBytes": 1285494304, "sha256": "", "url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q5_k_m.gguf" }
     ]
   },
   {

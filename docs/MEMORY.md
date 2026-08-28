@@ -195,7 +195,7 @@ dotnet run --project src\Owlia.Host
 - BL-132: Code signing (needs certificate)
 - E2E test with real ONNX models
 
-**Next action**: 1 of 3 engine swaps remains — Summarization → LLamaSharp. Whisper → Whisper.net **done**, VAD+diarization → sherpa-onnx **done** (both 2026-08-28, see below). TTS → sherpa-onnx Kokoro is deferred, not "remaining work to pick up casually" — it's blocked on adding archive-extraction support to `ModelManager` (see BL-152 note). After LLamaSharp lands, re-verify: download models via Download page → drop an audio file in Playground → click Analyse → verify full pipeline end to end with all real models.
+**Next action**: all 3 agreed engine swaps are **done** (2026-08-28) — Whisper → Whisper.net, VAD+diarization → sherpa-onnx, Summarization → LLamaSharp, each functionally verified against real audio/text. TTS → sherpa-onnx Kokoro is deferred, not "remaining work to pick up casually" — it's blocked on adding archive-extraction support to `ModelManager` (see BL-152 note below). Next real milestone: an actual E2E run through the Download page + Playground with all real models downloaded (whisper-large-v3 alone is ~2.9GB — nobody has done a full real-money download-and-analyze run yet, only isolated per-component verification with small/test models).
 
 ---
 
@@ -263,6 +263,26 @@ Real API confirmed (namespace `SherpaOnnx`):
 **Functionally verified against real audio, not just compiled**: same `System.Speech.Synthesis` technique as the Whisper.net verification, 3 sentences with pauses between them (~11.7s total). VAD found exactly 3 segments matching the 3 sentences, 77.4% speech (correctly excluding the silence/pauses). Diarization independently found 3 segments with closely matching boundaries, all correctly labeled as a single consistent speaker (`speaker_0`) — correct, since it was one synthesized voice throughout.
 
 **BL-152 (TTS → sherpa-onnx Kokoro) deferred, not done**: `OfflineTtsKokoroModelConfig` needs `Model` (onnx) + `Voices` (voices.bin) + `Tokens` (tokens.txt) + `DataDir` (an `espeak-ng-data/` directory of many files) — sherpa-onnx only distributes this as a `.tar.bz2` release archive (e.g. `kokoro-multi-lang-v1_0.tar.bz2`), never as browsable individual files the way the VAD/diarization models are. The current per-file `models.json` manifest + `ModelManager` have no concept of "download and extract an archive," and a whole directory of espeak phoneme data doesn't fit the `files: [...]` flat-list shape anyway. This needs its own design work (archive support, or representing a directory as N manifest file entries with a shared destination folder) — didn't rush a shaky implementation. Current single-file `kokoro-onnx` ONNX Runtime TTS runner is untouched and still works.
+
+---
+
+## Session 2026-08-28 (final) — LLamaSharp swap complete (BL-153) — all 3 engine swaps done
+
+Summarization now runs on a small local instruct LLM (`Qwen/Qwen2.5-1.5B-Instruct-GGUF`, `qwen2.5-1.5b-instruct-q5_k_m.gguf`, ~1.2GB, official Qwen org repo not a community re-export) via `LLamaSharp` 0.27.0 + `LLamaSharp.Backend.Cpu`, instead of the old hand-rolled BART ONNX decode loop (whose tokenizer was a placeholder char-mapping hack, never real BPE).
+
+**API discovery, same discipline as the other two swaps**: probe project (`C:\Users\Administrator\Desktop\svg2ico`) reflected every public ctor/method/property of `ModelParams`, `LLamaWeights`, `LLamaContext`, `InferenceParams`, `StatelessExecutor`, `ChatSession`, `ChatHistory` before writing implementation code. Chose `StatelessExecutor` over `ChatSession`/`ChatHistory` — this is a one-shot "transcript in, structured text out" task with no multi-turn conversation state to preserve, so the simpler API fits. Real usage: `new ModelParams(path){ContextSize=4096, GpuLayerCount=0}` → `LLamaWeights.LoadFromFile(params)` → `new StatelessExecutor(weights, params)` → `await foreach (var token in executor.InferAsync(prompt, inferenceParams, ct))`.
+
+**Prompting, iterated against the real model, not assumed correct on the first try**: a naive single-instruction prompt ("respond with three labeled sections") generated ONLY the summary and stopped — small models can under-deliver on multi-part instructions. Fix: explicit format template inline in the prompt (`SUMMARY: <one paragraph>\nKEYWORDS: <5-8 comma-separated words>\nTAKEAWAYS:\n1. <point>\n2. <point>\n3. <point>`) plus an explicit "Do not stop until all three sections are written" — this reliably produced all three sections across repeated runs. ChatML format (`<|im_start|>system...<|im_end|>` etc.) is required — that's Qwen2.5-Instruct's real chat template, not invented. `InferenceParams.AntiPrompts = ["<|im_end|>", "<|im_start|>"]` stops generation cleanly at the model's own turn-end markers.
+
+**Parsing**: `ExtractSection(text, label, nextLabel)` finds a label, slices to the next label (or end of string), trims. Keywords split on `,`; takeaways split on newline with a leading `\d+[\.\)]\s*` regex stripped. No JSON — a small model's JSON formatting is less reliable than plain labeled text for this size class, tested informally by comparing output stability, went with the more robust option rather than the "cleaner-looking" one.
+
+**Verified against the real class, not a probe reimplementation**: the probe project took a project reference to `Owlia.AI.csproj` and called the actual `SummaryRunner.SummarizeAsync` directly (not equivalent inline code) — output: correct one-paragraph summary, 5 clean keywords (`Q4 roadmap, ML pipeline, infrastructure migration, Kubernetes rollout, vendor API rate limits`), 3 clean numbered takeaways, ~6-10s on CPU for a ~5-line multi-speaker transcript.
+
+**Manifest/wiring**: model id renamed `bart-cnn` → `summary-llm` everywhere (manifest, `TranscriptService.GetModelPath("summary-llm")`, frontend `modelStore.ts` `MODEL_REQUIREMENTS.summary`, `Download.tsx` `MODEL_ICONS`). `SummaryRunner` constructor is now single-arg (`modelPath`) — the old 2-arg encoder/decoder-path constructor doesn't apply to a GGUF model, so it's gone, not kept as a dead overload. `Dispose()` disposes both `_executor.Context` and `_weights` — `StatelessExecutor` itself has no `Dispose` (confirmed via the reflection dump), but it holds a `Context` (`LLamaContext`, `IDisposable`) that does.
+
+Native runtime: `LLamaSharp.Backend.Cpu` drops `llama.dll` into `runtimes/win-x64/native/{avx,avx2,avx512,noavx}/` — multiple CPU-feature variants, LLamaSharp auto-detects and picks the right one at runtime. No manual wiring, verified present after build.
+
+**This completes Epic 16.** All 3 agreed engine swaps (Whisper.net, sherpa-onnx, LLamaSharp) are done and functionally verified, each against real audio/text through the actual production classes — not just compiled, not just probed with equivalent-but-separate code. Only BL-152 (Kokoro/TTS) remains deferred, blocked on manifest archive support (see above), which was never part of the 3-swap agreement — TTS was explicitly kept on ONNX Runtime.
 
 ---
 

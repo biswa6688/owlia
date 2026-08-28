@@ -12,7 +12,7 @@
 | Data | SQLite via EF Core 10 |
 | Logging | Log4Net |
 | Serialization | Newtonsoft.Json (Json.NET) |
-| AI Runtime | Microsoft.ML.OnnxRuntime 1.20+ |
+| AI Runtime | ONNX Runtime (sentiment, TTS) + Whisper.net/whisper.cpp (ASR) + sherpa-onnx (VAD, diarization) + LLamaSharp/llama.cpp (summarization) |
 | Frontend | React 18, TypeScript, Vite, Zustand, Tailwind CSS |
 | Packaging | InnoSetup 6 |
 
@@ -90,7 +90,7 @@ owlia/
 │   │   ├── Sentiment/
 │   │   │   └── SentimentRunner.cs   # RoBERTa sentiment ONNX
 │   │   ├── Summary/
-│   │   │   └── SummaryRunner.cs     # BART-CNN ONNX
+│   │   │   └── SummaryRunner.cs     # Qwen2.5-1.5B-Instruct via LLamaSharp (llama.cpp)
 │   │   └── Tts/
 │   │       └── KokoroRunner.cs      # Kokoro TTS ONNX
 │   │
@@ -170,12 +170,12 @@ Media File (audio/video)
 | pyannote-segmentation-3.0 | Speaker segmentation | sherpa-onnx (1 file) | ~5.7MB | csukuangfj/sherpa-onnx-pyannote-segmentation-3-0 |
 | wespeaker_en_voxceleb_resnet34_LM | Speaker embedding | sherpa-onnx (1 file) | ~25.3MB | k2-fsa/sherpa-onnx releases |
 | roberta-sentiment | Sentiment (0-100) | ONNX Runtime (1 file) | ~476MB | Xenova/twitter-roberta-base-sentiment-latest |
-| bart-cnn | Summarization | ONNX Runtime (encoder+decoder, 2 files) | ~1.7GB | Xenova/bart-large-cnn |
+| summary-llm | Summarization | LLamaSharp / llama.cpp (GGUF, 1 file) | ~1.2GB | Qwen/Qwen2.5-1.5B-Instruct-GGUF |
 | kokoro-v1.0 | TTS (high quality) | ONNX Runtime (1 file) | ~310MB | onnx-community/Kokoro-82M-v1.0-ONNX |
 
-**Total model RAM: ~5.6GB** — well within 36GB constraint.
+**Total model RAM: ~5.1GB** — well within 36GB constraint.
 
-**Note:** the original manifest (facebook/openai/pyannote/wenet-e2e/hexgrad/cardiffnlp source URLs) was entirely broken — those orgs don't host ONNX exports at those paths. Fixed 2026-08-28. Whisper then swapped off ONNX entirely onto Whisper.net (whisper.cpp) — simpler (1 file vs. 4) and avoids a KV-cache decode loop that would otherwise have to be hand-implemented. VAD + diarization then swapped to sherpa-onnx — `OfflineSpeakerDiarization` does segmentation+embedding+clustering in one call, retiring 3 hand-rolled files (`EmbeddingRunner`, `SegmentationRunner`, `SpeakerClusterer`) for 1. Both swaps functionally verified against real audio, not just compiled. Summarization → a small local LLM (LLamaSharp) is still planned; TTS → sherpa-onnx Kokoro is deferred (its model ships as a directory bundle only distributed as a `.tar.bz2` archive — doesn't fit the current per-file manifest). See `docs/MEMORY.md` for the full investigation.
+**Note:** the original manifest (facebook/openai/pyannote/wenet-e2e/hexgrad/cardiffnlp source URLs) was entirely broken — those orgs don't host ONNX exports at those paths. Fixed 2026-08-28. All 3 planned engine swaps are now done, each functionally verified against real audio/text, not just compiled: Whisper → Whisper.net (whisper.cpp) — simpler (1 file vs. 4) and avoids a KV-cache decode loop that would otherwise have to be hand-implemented. VAD + diarization → sherpa-onnx — `OfflineSpeakerDiarization` does segmentation+embedding+clustering in one call, retiring 3 hand-rolled files (`EmbeddingRunner`, `SegmentationRunner`, `SpeakerClusterer`) for 1. Summarization → LLamaSharp — a local instruct LLM (Qwen2.5-1.5B) replaces BART + a placeholder tokenizer, producing summary/keywords/takeaways from one prompted call. TTS → sherpa-onnx Kokoro remains deferred (its model ships as a directory bundle only distributed as a `.tar.bz2` archive — doesn't fit the current per-file manifest). See `docs/MEMORY.md` for the full investigation.
 
 ---
 

@@ -187,16 +187,16 @@ Status: `[ ]` todo · `[~]` in-progress · `[x]` done · `[!]` blocked
 
 ---
 
-## Epic 16 — Engine Swaps (agreed 2026-08-28, not started)
+## Epic 16 — Engine Swaps (agreed 2026-08-28 — Whisper.net/sherpa-onnx/LLamaSharp all done same day; Kokoro/TTS deferred)
 
 | ID | Task | Notes |
 |---|---|---|
 | BL-150 | `[x]` Whisper → Whisper.net (whisper.cpp/GGML) | `WhisperRunner` rewritten around `WhisperFactory`/`WhisperProcessor`. Model is now single-file `ggml-large-v3.bin` (3.1GB, was 4 files/6.2GB ONNX). Functionally verified: real SAPI-synthesized speech → correct transcript + timestamps via `ggml-tiny.bin` |
 | BL-151 | `[x]` VAD + diarization → sherpa-onnx | `SileroVadRunner` rewritten around `VoiceActivityDetector`; `EmbeddingRunner`+`SegmentationRunner`+`SpeakerClusterer` retired, replaced by one `DiarizationRunner` wrapping `OfflineSpeakerDiarization` (segmentation+embedding+clustering in one call). Functionally verified: 3 spoken sentences → 3 correctly-bounded VAD segments (77.4% speech) + 3 matching diarization segments, correct single speaker |
 | BL-152 | `[!]` TTS → sherpa-onnx Kokoro module | **Blocked/deferred** — sherpa-onnx's Kokoro needs `model.onnx` + `voices.bin` + `tokens.txt` + an `espeak-ng-data/` directory (many small files), only distributed as a `.tar.bz2` release archive. Doesn't fit the current per-file manifest without adding archive-extraction support to `ModelManager`. Current `kokoro-onnx` single-file TTS runner stays as-is — it already works and isn't the KV-cache-decode-loop class of bug the other swaps fixed. Revisit if archive support gets added for another reason |
-| BL-153 | `[ ]` Summarization → small local LLM via LLamaSharp | Retires `SummaryRunner`'s BART + placeholder tokenizer; prompted keywords/takeaways |
+| BL-153 | `[x]` Summarization → small local LLM via LLamaSharp | `SummaryRunner` rewritten around `Qwen2.5-1.5B-Instruct` GGUF via `StatelessExecutor.InferAsync`. Summary+keywords+takeaways all in one prompted call, parsed from a labeled-section format. Functionally verified against the real class with a real transcript — coherent summary, clean keywords, clean numbered takeaways |
 | BL-154 | `[ ]` `SummaryView.tsx` speech-percentage display | Backend (BL-143) already exposes it via `/api/summary` |
-| BL-155 | `[ ]` Rebuild `models.json` manifest for new engines' model files | GGUF/GGML instead of ONNX for BL-150/151/153 |
+| BL-155 | `[x]` Rebuild `models.json` manifest for new engines' model files | Done incrementally per swap: `silero_vad.onnx`/`pyannote-seg-3.0.onnx`/`wespeaker_en_voxceleb_resnet34_LM.onnx` (sherpa-onnx), `ggml-large-v3.bin` (Whisper.net), `qwen2.5-1.5b-instruct-q5_k_m.gguf` (LLamaSharp, replaces `bart-cnn`) |
 
 ---
 

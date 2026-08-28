@@ -21,7 +21,7 @@ const MODEL_ICONS: Record<string, typeof Mic> = {
   'pyannote-seg': Users,
   'wespeaker-ecapa': Users,
   'roberta-sentiment': BarChart2,
-  'bart-cnn': FileText,
+  'summary-llm': FileText,
   'kokoro-tts': Volume2,
 }
 

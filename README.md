@@ -14,7 +14,7 @@ A desktop application for offline speech-to-text transcription with speaker diar
 | Voice Activity Detection | Silero VAD (sherpa-onnx) | Planned |
 | Speaker Diarization | pyannote seg-3.0 + WeSpeaker (sherpa-onnx) | Planned |
 | Sentence Sentiment | RoBERTa sentiment (ONNX) | Planned |
-| Summarization | BART-large-CNN (ONNX) | Planned |
+| Summarization | Qwen2.5-1.5B-Instruct (LLamaSharp / llama.cpp) | Planned |
 | Text-to-Speech | Kokoro v1.0 (ONNX) | Planned |
 | CLI Integration | Claude CLI / OpenCode CLI | Planned |
 
@@ -26,7 +26,7 @@ A desktop application for offline speech-to-text transcription with speaker diar
 - **Data**: SQLite + EF Core
 - **Logging**: Log4Net
 - **Serialization**: Newtonsoft.Json
-- **AI Runtime**: Microsoft.ML.OnnxRuntime 1.20+
+- **AI Runtime**: ONNX Runtime (sentiment, TTS), Whisper.net/whisper.cpp (ASR), sherpa-onnx (VAD, diarization), LLamaSharp/llama.cpp (summarization)
 - **Frontend**: React 18, TypeScript, Vite, Zustand, Tailwind CSS, Framer Motion
 - **Distribution**: InnoSetup 6
 
@@ -36,14 +36,14 @@ A desktop application for offline speech-to-text transcription with speaker diar
 
 - Windows 10/11 x64
 - RAM: 8GB minimum, 16GB recommended (36GB for all models simultaneously)
-- Storage: ~8GB for all ONNX models
+- Storage: ~5.1GB for all models
 - .NET 10 Runtime (bundled in installer)
 
 ---
 
 ## Models
 
-Models are downloaded on first use. Total size ~5.6GB.
+Models are downloaded on first use. Total size ~5.1GB.
 
 | Model | Engine | Files | Size | Purpose |
 |---|---|---|---|---|
@@ -52,12 +52,12 @@ Models are downloaded on first use. Total size ~5.6GB.
 | `pyannote-seg-3.0.onnx` | sherpa-onnx | 1 | ~5.7MB | Speaker segmentation |
 | `wespeaker_en_voxceleb_resnet34_LM.onnx` | sherpa-onnx | 1 | ~25.3MB | Speaker embedding |
 | `roberta-sentiment.onnx` | ONNX Runtime | 1 | ~476MB | Sentiment analysis |
-| `bart-cnn` | ONNX Runtime (encoder+decoder) | 2 | ~1.7GB | Summarization |
+| `qwen2.5-1.5b-instruct-q5_k_m.gguf` | LLamaSharp (llama.cpp) | 1 | ~1.2GB | Summarization |
 | `kokoro-v1.0.onnx` | ONNX Runtime | 1 | ~310MB | Text-to-speech |
 
-Diarization (segmentation + embedding + clustering) runs as one sherpa-onnx `OfflineSpeakerDiarization` call rather than 3 separate stages.
+Diarization (segmentation + embedding + clustering) runs as one sherpa-onnx `OfflineSpeakerDiarization` call rather than 3 separate stages. Summarization, keywords, and takeaways all come from one prompted call to the local LLM.
 
-**Remaining planned engine swap**: Summarization → a small local LLM via LLamaSharp (not yet implemented). TTS → sherpa-onnx's Kokoro module is deferred — its model ships as a directory bundle (`model.onnx` + `voices.bin` + `tokens.txt` + `espeak-ng-data/`) only distributed as a `.tar.bz2` archive, which the current per-file manifest doesn't support yet.
+**All 3 planned engine swaps are done** (Whisper → Whisper.net, VAD+diarization → sherpa-onnx, Summarization → LLamaSharp). TTS → sherpa-onnx's Kokoro module is deferred — its model ships as a directory bundle (`model.onnx` + `voices.bin` + `tokens.txt` + `espeak-ng-data/`) only distributed as a `.tar.bz2` archive, which the current per-file manifest doesn't support yet.
 
 ---
 

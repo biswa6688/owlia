@@ -7,7 +7,7 @@ export const MODEL_REQUIREMENTS: Record<string, string[]> = {
   transcribe: ['silero-vad', 'whisper-large-v3'],
   diarize:   ['pyannote-seg', 'wespeaker-ecapa'],
   sentiment: ['roberta-sentiment'],
-  summary:   ['bart-cnn'],
+  summary:   ['summary-llm'],
   tts:       ['kokoro-tts'],
 }
 

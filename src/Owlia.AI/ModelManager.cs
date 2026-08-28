@@ -48,12 +48,25 @@ public sealed class ModelManager : IModelManagerService
         var result = new List<ModelStatus>();
         foreach (var entry in manifest)
         {
+            long partialBytes = 0;
             var fileStates = entry.Files.Select(f =>
             {
                 var path = Path.Combine(_modelsDir, f.FileName);
                 var exists = File.Exists(path);
+                if (exists)
+                {
+                    partialBytes += f.SizeBytes;
+                }
+                else
+                {
+                    var tmpPath = path + ".tmp";
+                    if (File.Exists(tmpPath))
+                        partialBytes += new FileInfo(tmpPath).Length;
+                }
                 return (exists, verified: exists && VerifyHash(path, f.Sha256));
             }).ToList();
+
+            var downloaded = fileStates.All(s => s.exists);
 
             result.Add(new ModelStatus
             {
@@ -64,8 +77,10 @@ public sealed class ModelManager : IModelManagerService
                 SizeBytes = entry.Files.Sum(f => f.SizeBytes),
                 Sha256 = entry.Files.Count == 1 ? entry.Files[0].Sha256 : string.Empty,
                 Url = entry.Files.Count == 1 ? entry.Files[0].Url : string.Empty,
-                Downloaded = fileStates.All(s => s.exists),
+                Downloaded = downloaded,
                 Verified = fileStates.All(s => s.verified),
+                PartialBytes = partialBytes,
+                IsPaused = !downloaded && partialBytes > 0,
             });
         }
         return result;
@@ -93,16 +108,40 @@ public sealed class ModelManager : IModelManagerService
             if (!string.IsNullOrEmpty(destDir)) Directory.CreateDirectory(destDir);
             var tmpPath = destPath + ".tmp";
 
-            using (var response = await http.GetAsync(file.Url, HttpCompletionOption.ResponseHeadersRead, ct))
+            // Already fully downloaded (e.g. resuming a multi-file model after
+            // an earlier file completed) — skip straight to the next file.
+            if (File.Exists(destPath))
+            {
+                bytesDoneBeforeCurrentFile += file.SizeBytes;
+                progress.Report((bytesDoneBeforeCurrentFile, totalBytes));
+                continue;
+            }
+
+            long resumeFrom = File.Exists(tmpPath) ? new FileInfo(tmpPath).Length : 0;
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, file.Url);
+            if (resumeFrom > 0)
+                request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(resumeFrom, null);
+
+            using (var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct))
             {
                 response.EnsureSuccessStatusCode();
 
+                // Server may ignore the Range header (200 OK, full content) even
+                // though we asked for a partial range — restart that file from 0.
+                var resuming = resumeFrom > 0 && response.StatusCode == System.Net.HttpStatusCode.PartialContent;
+                if (resumeFrom > 0 && !resuming)
+                    resumeFrom = 0;
+
                 await using var src = await response.Content.ReadAsStreamAsync(ct);
-                await using var dst = File.Create(tmpPath);
+                await using var dst = resuming
+                    ? new FileStream(tmpPath, FileMode.Append, FileAccess.Write)
+                    : File.Create(tmpPath);
 
                 var buffer = new byte[81920];
                 int read;
-                long fileDownloaded = 0;
+                long fileDownloaded = resuming ? resumeFrom : 0;
+                progress.Report((bytesDoneBeforeCurrentFile + fileDownloaded, totalBytes));
 
                 while ((read = await src.ReadAsync(buffer, ct)) > 0)
                 {
@@ -123,6 +162,19 @@ public sealed class ModelManager : IModelManagerService
 
             File.Move(tmpPath, destPath, overwrite: true);
             bytesDoneBeforeCurrentFile += file.SizeBytes;
+        }
+    }
+
+    public async Task CancelDownloadAsync(string modelId, CancellationToken ct = default)
+    {
+        var manifest = await LoadManifestAsync(ct);
+        var entry = manifest.FirstOrDefault(m => m.Id == modelId)
+            ?? throw new ArgumentException($"Unknown model id: {modelId}");
+
+        foreach (var file in entry.Files)
+        {
+            var tmpPath = Path.Combine(_modelsDir, file.FileName) + ".tmp";
+            if (File.Exists(tmpPath)) File.Delete(tmpPath);
         }
     }
 

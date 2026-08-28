@@ -130,7 +130,10 @@ GET    /api/transcript/{id}        → TranscriptResult
 GET    /api/sentiment/{id}         → SentimentResult
 GET    /api/summary/{id}           → SummaryResult
 GET    /api/models                 → ModelStatus[]
-POST   /api/models/download        { modelId } → 202
+POST   /api/models/download        { modelId } → 202  (also resumes — see below)
+POST   /api/models/pause           { modelId } → 202
+POST   /api/models/cancel          { modelId } → 202
+GET    /api/updates/check          → { cli: CliUpdateInfo[], models: ModelUpdateInfo[] }
 GET    /api/history                → Session[]
 DELETE /api/history/{id}           → 204
 POST   /api/tts                    { text, voice? } → audio/wav
@@ -140,8 +143,12 @@ POST   /api/cli/query              { sessionId, question, cli } → 202
 WS     /hub/progress
 ```
 
+**Download pause/resume/cancel** (`ModelApi.cs`, `ModelManager.cs`): `POST /api/models/download` is the *only* start-or-resume endpoint — `ModelManager.DownloadAsync` auto-detects an existing `.tmp` file for the current file and sends `Range: bytes={existing length}-`; if the server ignores the range (200 instead of 206) it restarts that file from 0. Multi-file models (Whisper/BART) also skip any file whose *final* path already exists, so resuming only re-fetches the file that was actually interrupted. `ModelApi.cs` tracks one `CancellationTokenSource` per in-flight model id in a static `ConcurrentDictionary` (`_active`) — Pause just cancels it (task catches `OperationCanceledException`, leaves the `.tmp`, emits `ModelDownloadPaused`); Cancel sets a `CancelRequested` flag first so the *same* task that owns the file handle deletes the `.tmp` on unwind (avoids a delete-while-writing race), emits `ModelDownloadCancelled`. `ModelStatus.PartialBytes`/`IsPaused` let the frontend show "Resume" immediately on page load even for a download interrupted by an app restart in a *previous* session (no active task needed for that — it's derived from `.tmp` file presence on disk). All of this was byte-verified live, not just typechecked: paused a real `bart-cnn` download at 101,809,867 bytes, resumed to 114,021,648 (proves Range resume, not restart), then cancelled and confirmed the `.tmp` was deleted.
+
+**Update check** (`UpdateApi.cs`): `GET /api/updates/check` is read-only and manual/opt-in only — the frontend (`useSettingsStore`, localStorage key `owlia-check-for-updates`, default `false`) decides whether to call it on Download-page mount, plus there's always a manual "Check now" button regardless of the toggle. CLI check queries `https://registry.npmjs.org/{package}/latest` (real npm packages: `@anthropic-ai/claude-code`, `opencode`) and compares to the version parsed from `{bin} --version`. Model check does a `HEAD` on the model's manifest URL and compares `Content-Length` to the recorded `sizeBytes` — approximate (content-based, not real semver) since none of these model repos expose a version number, but honest and it does detect real changes. Multi-file models (Whisper/BART) can't be checked this way (no single URL) — reported as `checked: false`, not a crash. **This endpoint must never be wired to auto-download or auto-install anything** — user was explicit about that.
+
 ### SignalR Events
-- `ModelDownloadProgress` / `ModelDownloadError`
+- `ModelDownloadProgress` / `ModelDownloadPaused` / `ModelDownloadCancelled` / `ModelDownloadError`
 - `AnalysisProgress` → `{ stage, percent }` (audio/vad/asr/diarization/sentiment/saving/summary/done)
 - `TranscriptSegment` → SpeakerSegment (streamed live)
 - `AnalysisComplete` / `AnalysisError`

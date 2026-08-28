@@ -79,6 +79,7 @@ public static class Program
         app.MapHistoryApi();
         app.MapTtsApi();
         app.MapCliApi();
+        app.MapUpdateApi();
 
         app.MapHub<ProgressHub>("/hub/progress");
 

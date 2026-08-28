@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — Semantic Ve
 
 ## [Unreleased]
 
+### Added — Session 6 (pause/resume/cancel, update check, display names)
+
+- Download page: pause, resume, and cancel a model download. Resume uses real HTTP `Range` requests continuing an existing `.tmp` file (byte-verified: paused at 101.8MB, resumed to 114MB — not a restart). Multi-file models (Whisper, BART) resume at the file level too — a completed encoder is skipped when resuming a paused decoder.
+- Update-check setting: opt-in toggle + manual "Check now" button. `GET /api/updates/check` compares installed CLI versions against the npm registry `latest` tag, and downloaded models' recorded size against the source's current `Content-Length`. Purely informational — never downloads or installs anything automatically, matching the "no auto updates" requirement. Live-verified against the real npm registry.
+- Model manifest entries now carry a `displayName` (e.g. "Whisper Large v3") shown on the Download page instead of just the internal id/feature category.
+
 ### Fixed — Session 5 (model manifest, VAD version, window branding)
 
 - **Critical**: all 7 URLs in `models/models.json` returned 404/401 — pointed at orgs that don't host ONNX exports at those paths. Verified real replacement URLs via `curl` for every model before writing them. Whisper large-v3 and BART-CNN have no single-file ONNX export anywhere; manifest schema changed to `files: [...]` per model (multi-file support), `ModelManager.cs` rewritten to download/verify all files per model with cumulative progress, `TranscriptService.cs`/`SummaryRunner.cs` wired to the encoder+decoder paths. Real total download size is ~8.9GB (was documented ~5.7GB).

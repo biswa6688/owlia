@@ -200,6 +200,19 @@ Status: `[ ]` todo · `[~]` in-progress · `[x]` done · `[!]` blocked
 
 ---
 
+## Epic 17 — Download Page: Pause/Resume/Cancel, Update Check (2026-08-28)
+
+| ID | Task | Notes |
+|---|---|---|
+| BL-160 | `[x]` Model display names | `models.json` "displayName" field, shown on Download page |
+| BL-161 | `[x]` Pause a model download | `POST /api/models/pause` — cancels the in-flight transfer, keeps the `.tmp` file |
+| BL-162 | `[x]` Resume a paused download | Same `POST /api/models/download` call — `ModelManager` detects the `.tmp` and sends `Range: bytes={size}-`. Byte-level verified: paused at 101.8MB, resumed to 114MB, not restarted from 0 |
+| BL-163 | `[x]` Cancel a download | `POST /api/models/cancel` — deletes the `.tmp` file(s), resets status |
+| BL-164 | `[x]` Multi-file resume at the file level | `DownloadAsync` skips files whose final path already exists — a completed encoder doesn't re-download when resuming a paused decoder |
+| BL-165 | `[x]` Update-check setting (CLI + models) | `GET /api/updates/check` — npm registry `latest` dist-tag for CLIs, remote `Content-Length` vs. recorded size for models. Opt-in toggle (`useSettingsStore`, localStorage, default off), manual "Check now" button. **Never auto-downloads or auto-installs** — purely informational badges |
+
+---
+
 ## Remaining
 
 - BL-132: Code signing (needs certificate — deferred)

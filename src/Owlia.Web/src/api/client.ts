@@ -80,6 +80,25 @@ export interface CliStatus {
 export const modelsApi = {
   getAll: () => api.get<ModelStatus[]>('/api/models').then(r => r.data),
   download: (modelId: string) => api.post('/api/models/download', { modelId }),
+  pause: (modelId: string) => api.post('/api/models/pause', { modelId }),
+  cancel: (modelId: string) => api.post('/api/models/cancel', { modelId }),
+}
+
+export interface CliUpdateInfo {
+  slug: string
+  installedVersion: string | null
+  latestVersion: string | null
+  updateAvailable: boolean
+}
+
+export interface ModelUpdateInfo {
+  id: string
+  updateAvailable: boolean
+  checked: boolean
+}
+
+export const updatesApi = {
+  check: () => api.get<{ cli: CliUpdateInfo[]; models: ModelUpdateInfo[] }>('/api/updates/check').then(r => r.data),
 }
 
 export const mediaApi = {

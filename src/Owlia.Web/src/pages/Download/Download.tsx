@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
-import { cliApi, modelsApi, type CliStatus } from '../../api/client'
+import { cliApi, modelsApi, updatesApi, type CliStatus, type CliUpdateInfo, type ModelUpdateInfo } from '../../api/client'
 import { useModelStore } from '../../store/modelStore'
+import { useSettingsStore } from '../../store/settingsStore'
 import { startHub, getHub } from '../../api/signalr'
 import { Nav } from '../../components/Nav/Nav'
 import { ProgressBar } from '../../components/UI/ProgressBar'
 import {
   Terminal, CheckCircle, Copy, Check, Cpu,
-  DownloadIcon, Mic, Users, BarChart2, FileText, Volume2, Activity, AlertCircle, Loader2,
+  DownloadIcon, Mic, Users, BarChart2, FileText, Volume2, Activity, AlertCircle, Loader2, Pause, X, RefreshCw,
 } from '../../components/Icons/icons'
 
 const CLIS = [
@@ -33,6 +34,7 @@ function formatBytes(n: number) {
 
 interface DownloadState {
   percent: number
+  paused?: boolean
   error?: string
 }
 
@@ -41,6 +43,9 @@ export default function DownloadPage() {
   const [copied, setCopied]     = useState<string | null>(null)
   const { models, refresh } = useModelStore()
   const [downloading, setDownloading] = useState<Record<string, DownloadState>>({})
+  const { checkForUpdates, setCheckForUpdates } = useSettingsStore()
+  const [updateInfo, setUpdateInfo] = useState<{ cli: CliUpdateInfo[]; models: ModelUpdateInfo[] } | null>(null)
+  const [checkingUpdates, setCheckingUpdates] = useState(false)
 
   const fetchCli = useCallback(async () => {
     try {
@@ -50,6 +55,37 @@ export default function DownloadPage() {
   }, [])
 
   useEffect(() => { fetchCli(); refresh() }, [fetchCli, refresh])
+
+  const checkUpdates = useCallback(async () => {
+    setCheckingUpdates(true)
+    try {
+      const info = await updatesApi.check()
+      setUpdateInfo(info)
+    } catch { /* offline or check failed — leave previous result, if any */ }
+    finally { setCheckingUpdates(false) }
+  }, [])
+
+  // Only checks when the user has opted in — never automatic/silent, and
+  // never downloads anything itself, just reports what's available.
+  useEffect(() => {
+    if (checkForUpdates) checkUpdates()
+  }, [checkForUpdates, checkUpdates])
+
+  // Seed paused state from the server on load/refresh — a model can already be
+  // sitting mid-download (partial ".tmp" file) from a previous app session.
+  useEffect(() => {
+    setDownloading(prev => {
+      let changed = false
+      const next = { ...prev }
+      for (const m of models) {
+        if (m.isPaused && !next[m.id]) {
+          next[m.id] = { percent: m.sizeBytes > 0 ? (m.partialBytes / m.sizeBytes) * 100 : 0, paused: true }
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [models])
 
   useEffect(() => {
     let cancelled = false
@@ -71,6 +107,19 @@ export default function DownloadPage() {
         }
       })
 
+      hub.on('ModelDownloadPaused', (data: { modelId: string }) => {
+        setDownloading(prev => ({ ...prev, [data.modelId]: { percent: prev[data.modelId]?.percent ?? 0, paused: true } }))
+      })
+
+      hub.on('ModelDownloadCancelled', (data: { modelId: string }) => {
+        setDownloading(prev => {
+          const next = { ...prev }
+          delete next[data.modelId]
+          return next
+        })
+        refresh()
+      })
+
       hub.on('ModelDownloadError', (data: { modelId: string; error: string }) => {
         setDownloading(prev => ({ ...prev, [data.modelId]: { percent: prev[data.modelId]?.percent ?? 0, error: data.error } }))
       })
@@ -80,6 +129,8 @@ export default function DownloadPage() {
       cancelled = true
       const hub = getHub()
       hub.off('ModelDownloadProgress')
+      hub.off('ModelDownloadPaused')
+      hub.off('ModelDownloadCancelled')
       hub.off('ModelDownloadError')
     }
   }, [refresh])
@@ -91,11 +142,29 @@ export default function DownloadPage() {
   }
 
   const startDownload = async (modelId: string) => {
-    setDownloading(prev => ({ ...prev, [modelId]: { percent: 0 } }))
+    // Preserve percent if resuming from a paused state — avoids a flash back to 0%.
+    setDownloading(prev => ({ ...prev, [modelId]: { percent: prev[modelId]?.percent ?? 0 } }))
     try {
       await modelsApi.download(modelId)
     } catch (err) {
       setDownloading(prev => ({ ...prev, [modelId]: { percent: 0, error: err instanceof Error ? err.message : 'Failed to start download' } }))
+    }
+  }
+
+  const pauseDownload = async (modelId: string) => {
+    try { await modelsApi.pause(modelId) } catch { /* ignore */ }
+  }
+
+  const cancelDownload = async (modelId: string) => {
+    try {
+      await modelsApi.cancel(modelId)
+    } finally {
+      setDownloading(prev => {
+        const next = { ...prev }
+        delete next[modelId]
+        return next
+      })
+      refresh()
     }
   }
 
@@ -116,6 +185,38 @@ export default function DownloadPage() {
             </p>
           </div>
 
+          {/* Settings — update check (opt-in, manual, never auto-downloads) */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
+            padding: '10px 14px', marginBottom: 20,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.76rem' }}>
+                <input
+                  type="checkbox"
+                  checked={checkForUpdates}
+                  onChange={e => setCheckForUpdates(e.target.checked)}
+                  style={{ accentColor: 'var(--accent)', width: 14, height: 14, cursor: 'pointer' }}
+                />
+                Check for CLI &amp; model updates
+              </label>
+              <span style={{ fontSize: '0.64rem', opacity: 0.4 }}>Never auto-downloads — you decide when to update.</span>
+            </div>
+            <button
+              type="button"
+              onClick={checkUpdates}
+              disabled={checkingUpdates}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 999,
+                fontSize: '0.68rem', fontWeight: 600, background: 'var(--surface-2)', border: '1px solid var(--border)',
+                cursor: checkingUpdates ? 'default' : 'pointer', color: 'var(--text)', opacity: checkingUpdates ? 0.6 : 1,
+              }}
+            >
+              <RefreshCw size={11} className={checkingUpdates ? 'animate-spin' : ''} /> Check now
+            </button>
+          </div>
+
           {/* Models list */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 36 }}>
             {models.length === 0 && (
@@ -124,7 +225,9 @@ export default function DownloadPage() {
             {models.map(model => {
               const Icon = MODEL_ICONS[model.id] ?? DownloadIcon
               const state = downloading[model.id]
-              const isDownloading = !!state && !state.error
+              const isPaused = !!state?.paused && !state.error
+              const isDownloading = !!state && !state.error && !isPaused
+              const modelUpdate = updateInfo?.models.find(m => m.id === model.id)
 
               return (
                 <div
@@ -140,14 +243,61 @@ export default function DownloadPage() {
                       <Icon size={16} style={{ color: 'var(--accent)' }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontWeight: 700, fontSize: '0.85rem', lineHeight: 1.2 }}>{model.displayName || model.id}</p>
+                      <p style={{ fontWeight: 700, fontSize: '0.85rem', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {model.displayName || model.id}
+                        {modelUpdate?.updateAvailable && (
+                          <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)' }}>
+                            Update available
+                          </span>
+                        )}
+                      </p>
                       <p style={{ fontSize: '0.68rem', opacity: 0.45 }}>{model.feature} · {formatBytes(model.sizeBytes)}</p>
                     </div>
 
                     {model.downloaded ? (
                       <CheckCircle size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                     ) : isDownloading ? (
-                      <Loader2 size={16} className="animate-spin" style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <Loader2 size={16} className="animate-spin" style={{ color: 'var(--accent)' }} />
+                        <button
+                          type="button"
+                          title="Pause"
+                          onClick={() => pauseDownload(model.id)}
+                          style={{ display: 'flex', padding: 5, borderRadius: 999, background: 'var(--surface-2)', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text)' }}
+                        >
+                          <Pause size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Cancel"
+                          onClick={() => cancelDownload(model.id)}
+                          style={{ display: 'flex', padding: 5, borderRadius: 999, background: 'var(--surface-2)', border: '1px solid var(--border)', cursor: 'pointer', color: '#ef4444' }}
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ) : isPaused ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          onClick={() => startDownload(model.id)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '5px 12px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600,
+                            background: 'var(--accent)', color: '#1a1210', border: 'none', cursor: 'pointer',
+                          }}
+                        >
+                          <DownloadIcon size={12} /> Resume
+                        </button>
+                        <button
+                          type="button"
+                          title="Cancel"
+                          onClick={() => cancelDownload(model.id)}
+                          style={{ display: 'flex', padding: 5, borderRadius: 999, background: 'var(--surface-2)', border: '1px solid var(--border)', cursor: 'pointer', color: '#ef4444' }}
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
                     ) : (
                       <button
                         type="button"
@@ -163,10 +313,12 @@ export default function DownloadPage() {
                     )}
                   </div>
 
-                  {isDownloading && (
+                  {(isDownloading || isPaused) && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <ProgressBar value={state.percent} color="var(--accent)" className="flex-1" />
-                      <span style={{ fontSize: '0.65rem', opacity: 0.5, minWidth: 32, textAlign: 'right' }}>{Math.round(state.percent)}%</span>
+                      <ProgressBar value={state.percent} color={isPaused ? 'var(--text-muted)' : 'var(--accent)'} className="flex-1" />
+                      <span style={{ fontSize: '0.65rem', opacity: 0.5, minWidth: 60, textAlign: 'right' }}>
+                        {isPaused ? 'Paused · ' : ''}{Math.round(state.percent)}%
+                      </span>
                     </div>
                   )}
 
@@ -195,6 +347,7 @@ export default function DownloadPage() {
             {CLIS.map(({ name, slug, icon: Icon, color, desc, installCmd }) => {
               const installed = slug === 'claude' ? cliData?.claude : cliData?.opencode
               const version = slug === 'claude' ? cliData?.claudeVersion : cliData?.opencodeVersion
+              const cliUpdate = updateInfo?.cli.find(c => c.slug === slug)
 
               return (
                 <div
@@ -218,9 +371,14 @@ export default function DownloadPage() {
                   </div>
 
                   {installed ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '0.68rem', color: 'var(--accent)', fontWeight: 600 }}>Detected</span>
                       {version && <span style={{ fontSize: '0.62rem', opacity: 0.35 }}>({version})</span>}
+                      {cliUpdate?.updateAvailable && (
+                        <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)' }}>
+                          v{cliUpdate.latestVersion} available
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <div style={{ fontSize: '0.68rem', opacity: 0.45 }}>Not detected — install manually</div>

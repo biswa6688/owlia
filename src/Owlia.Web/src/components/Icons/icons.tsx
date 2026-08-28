@@ -249,3 +249,14 @@ export const Copy = icMulti([
   'M20 9h-8a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-8a2 2 0 00-2-2z',
   'M4 15H3a1 1 0 01-1-1V3a1 1 0 011-1h11a1 1 0 011 1v1',
 ])
+
+export const X = icMulti([
+  'M18 6L6 18',
+  'M6 6l12 12',
+])
+
+export const RefreshCw = icMulti([
+  'M23 4v6h-6',
+  'M1 20v-6h6',
+  'M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15',
+])

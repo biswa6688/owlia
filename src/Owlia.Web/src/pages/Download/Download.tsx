@@ -27,16 +27,20 @@ export function Download() {
   const [cliStatus, setCliStatus] = useState<CliStatus | null>(null)
 
   useEffect(() => {
+    // Helper: ensure we never store a non-array into models state
+    const safeSetModels = (raw: unknown) => {
+      setModels(Array.isArray(raw) ? raw as ModelStatus[] : [])
+    }
+
     Promise.all([
-      modelsApi.getAll().then(setModels),
+      modelsApi.getAll().then(safeSetModels).catch(() => safeSetModels([])),
       cliApi.status().then(setCliStatus).catch(() => {}),
     ]).finally(() => setLoading(false))
 
-    // Connect SignalR and register download progress handlers
+    // Connect SignalR for download progress — errors are non-fatal
     let active = true
     startHub().then(hub => {
       if (!active) return
-      // Remove stale handlers before adding new ones (prevents duplicates on re-mount)
       hub.off('ModelDownloadProgress')
       hub.off('ModelDownloadError')
 
@@ -44,14 +48,14 @@ export function Download() {
         setProgress(prev => ({ ...prev, [data.modelId]: data }))
         if (data.complete) {
           setDownloading(prev => { const n = new Set(prev); n.delete(data.modelId); return n })
-          modelsApi.getAll().then(setModels)
+          modelsApi.getAll().then(safeSetModels).catch(() => {})
         }
       })
       hub.on('ModelDownloadError', (data: { modelId: string; error: string }) => {
         setDownloading(prev => { const n = new Set(prev); n.delete(data.modelId); return n })
         alert(`Download failed for ${data.modelId}: ${data.error}`)
       })
-    })
+    }).catch(() => {}) // SignalR connection failure is non-fatal
 
     return () => { active = false }
   }, [])
@@ -95,7 +99,7 @@ export function Download() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {models.map((model, i) => {
+            {(Array.isArray(models) ? models : []).map((model, i) => {
               const isDownloading = downloading.has(model.id)
               const prog = progress[model.id]
 

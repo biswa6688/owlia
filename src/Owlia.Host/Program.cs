@@ -23,7 +23,15 @@ var dbPath = Path.Combine(dataDir, "owlia.db");
 
 // ── Web Application Builder ───────────────────────────────────────────────────
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls("http://127.0.0.1:0");
+
+// In Development: appsettings.Development.json fixes the port to 5174 so the
+// Vite dev-server proxy can forward /api and /hub to it.
+// In Production (served by Kestrel directly): bind to a random port; Photino
+// reads the actual address back from IServerAddressesFeature.
+if (!builder.Environment.IsDevelopment())
+{
+    builder.WebHost.UseUrls("http://127.0.0.1:0");
+}
 
 // Data
 builder.Services.AddDbContext<OwliaDbContext>(options =>

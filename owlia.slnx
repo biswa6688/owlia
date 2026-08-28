@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Owlia.AI/Owlia.AI.csproj" />
+    <Project Path="src/Owlia.Core/Owlia.Core.csproj" />
+    <Project Path="src/Owlia.Data/Owlia.Data.csproj" />
+    <Project Path="src/Owlia.Host/Owlia.Host.csproj" />
+  </Folder>
+</Solution>

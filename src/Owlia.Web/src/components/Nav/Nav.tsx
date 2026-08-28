@@ -1,6 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
 import { ThemeToggle } from '../UI/ThemeToggle'
-import { Video, VideoOff } from 'lucide-react'
 
 const LINKS = [
   { to: '/playground', label: 'Playground' },
@@ -8,12 +7,7 @@ const LINKS = [
   { to: '/download',   label: 'Download'   },
 ] as const
 
-interface Props {
-  showPlayer?: boolean
-  onTogglePlayer?: () => void
-}
-
-export function Nav({ showPlayer, onTogglePlayer }: Props) {
+export function Nav() {
   const { pathname } = useLocation()
   const active = (to: string) => pathname.startsWith(to)
 
@@ -62,28 +56,6 @@ export function Nav({ showPlayer, onTogglePlayer }: Props) {
             </Link>
           )
         })}
-
-        {onTogglePlayer && (
-          <button
-            type="button"
-            onClick={onTogglePlayer}
-            className="transition-all"
-            style={{
-              fontSize: '0.82rem',
-              fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 4,
-              padding: '5px 12px', borderRadius: 100, cursor: 'pointer',
-              border: `1px solid ${showPlayer ? 'var(--accent)' : 'var(--border)'}`,
-              background: showPlayer ? 'var(--accent)' : 'var(--surface)',
-              color: showPlayer ? '#1a1210' : 'var(--text)',
-            }}
-            title={showPlayer ? 'Hide player' : 'Show player'}
-          >
-            {showPlayer ? <Video size={13} /> : <VideoOff size={13} />}
-            Player
-          </button>
-        )}
-
         <ThemeToggle />
       </nav>
     </header>

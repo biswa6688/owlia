@@ -68,6 +68,11 @@ app.MapCliApi();
 // ── SignalR Hub ───────────────────────────────────────────────────────────────
 app.MapHub<ProgressHub>("/hub/progress");
 
+// ── SPA fallback — serve index.html for all non-API, non-file routes ─────────
+// This is required for React Router's BrowserRouter to handle client-side routes
+// like /landing, /history, /download, /playground without a 404.
+app.MapFallbackToFile("index.html");
+
 // ── Start Kestrel ─────────────────────────────────────────────────────────────
 var runTask = app.RunAsync();
 

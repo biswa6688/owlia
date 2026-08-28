@@ -1,71 +1,104 @@
 @import "tailwindcss";
 
 @theme {
-  --color-owl-primary: #6e4f44;
-  --color-owl-primary-mid: #875d54;
-  --color-owl-copper: #d0805f;
-  --color-owl-amber: #f2a35b;
-  --color-owl-gold: #feb903;
+  --color-owl-primary:    #6e4f44;
+  --color-owl-primary-mid:#875d54;
+  --color-owl-copper:     #d0805f;
+  --color-owl-amber:      #f2a35b;
+  --color-owl-gold:       #feb903;
   --color-owl-warm-light: #f5dbb8;
   --color-owl-near-black: #303232;
-  --color-owl-gray: #878787;
+  --color-owl-gray:       #878787;
 
   --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
 }
 
+/* ── Semantic tokens — light mode ─────────────────────────────────────────── */
 :root {
-  --bg: #fef9f4;
-  --surface: #fff5eb;
-  --surface-2: #f5dbb8;
-  --text: #303232;
-  --text-muted: #6e4f44;
-  --border: rgba(110, 79, 68, 0.18);
-  --accent: #f2a35b;
-  --accent-strong: #feb903;
-  --accent-copper: #d0805f;
+  --bg:           #fef9f4;
+  --surface:      #fff5eb;
+  --surface-2:    #f5dbb8;
+  --text:         #303232;
+  --text-muted:   #6e4f44;
+  --border:       rgba(110,79,68,0.18);
+  --accent:       #f2a35b;
+  --accent-strong:#feb903;
+  --accent-copper:#d0805f;
+
+  /* Stripe pattern — diagonal lines at 45° using the brand colour */
+  --stripe-color: rgba(110,79,68,0.06);
+  --stripe-bg:    var(--bg);
 
   color-scheme: light;
 }
 
+/* ── Dark mode (system preference) ───────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #1a1210;
-    --surface: #2a1f1b;
-    --surface-2: #3a2c26;
-    --text: #f5dbb8;
-    --text-muted: #d0805f;
-    --border: rgba(242, 163, 91, 0.16);
-    --accent: #f2a35b;
-    --accent-strong: #feb903;
-    --accent-copper: #d0805f;
+    --bg:           #1a1210;
+    --surface:      #2a1f1b;
+    --surface-2:    #3a2c26;
+    --text:         #f5dbb8;
+    --text-muted:   #d0805f;
+    --border:       rgba(242,163,91,0.16);
+    --accent:       #f2a35b;
+    --accent-strong:#feb903;
+    --accent-copper:#d0805f;
+
+    --stripe-color: rgba(242,163,91,0.04);
+    --stripe-bg:    var(--bg);
 
     color-scheme: dark;
   }
 }
 
+/* ── Dark mode (explicit toggle) ─────────────────────────────────────────── */
 :root[data-theme="dark"] {
-  --bg: #1a1210;
-  --surface: #2a1f1b;
-  --surface-2: #3a2c26;
-  --text: #f5dbb8;
-  --text-muted: #d0805f;
-  --border: rgba(242, 163, 91, 0.16);
-  --accent: #f2a35b;
-  --accent-strong: #feb903;
-  --accent-copper: #d0805f;
+  --bg:           #1a1210;
+  --surface:      #2a1f1b;
+  --surface-2:    #3a2c26;
+  --text:         #f5dbb8;
+  --text-muted:   #d0805f;
+  --border:       rgba(242,163,91,0.16);
+  --accent:       #f2a35b;
+  --accent-strong:#feb903;
+  --accent-copper:#d0805f;
+
+  --stripe-color: rgba(242,163,91,0.04);
+  --stripe-bg:    var(--bg);
 
   color-scheme: dark;
 }
 
-* {
-  box-sizing: border-box;
+/* ── Stripe texture utility ───────────────────────────────────────────────── */
+/* Apply class="bg-stripe" to any section that needs the diagonal-line texture */
+.bg-stripe {
+  background-color: var(--stripe-bg);
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--stripe-color) 0px,
+    var(--stripe-color) 1px,
+    transparent 1px,
+    transparent 18px
+  );
 }
 
-html,
-body,
-#root {
-  height: 100%;
+/* Denser stripe for hero sections */
+.bg-stripe-dense {
+  background-color: var(--stripe-bg);
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--stripe-color) 0px,
+    var(--stripe-color) 1px,
+    transparent 1px,
+    transparent 10px
+  );
 }
+
+/* ── Reset ────────────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
 
 body {
   margin: 0;
@@ -75,3 +108,9 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* ── Scrollbar (webkit) ──────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-copper); }

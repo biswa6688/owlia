@@ -19,116 +19,120 @@ import type { SpeakerSegment, SentimentResult, SummaryResult } from '../../api/c
 
 type Tab = 'transcript' | 'sentiment' | 'summary' | 'cli'
 
+// Dark palette for the Playground (always dark regardless of global theme)
+const P = {
+  bg:       '#0f0b09',
+  surface:  '#1e1510',
+  panel:    '#261a14',
+  bar:      '#2a1f1b',
+  border:   'rgba(242,163,91,0.13)',
+  text:     '#f0d8bc',
+  muted:    '#c07850',
+  accent:   '#f2a35b',
+  gold:     '#feb903',
+} as const
+
 function fmtTime(sec: number) {
   const m = Math.floor(sec / 60)
   const s = Math.floor(sec % 60)
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+// Inject dark CSS vars into a style attribute for child components
+const DARK_VARS: React.CSSProperties = {
+  '--text':     P.text,
+  '--text-muted': P.muted,
+  '--surface':  P.panel,
+  '--surface-2':'#3a2c26',
+  '--border':   P.border,
+  '--accent':   P.accent,
+  '--bg':       P.surface,
+} as React.CSSProperties
+
 export function Playground() {
   const store = usePlaygroundStore()
   const { refresh: refreshModels, isReady } = useModelStore()
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const videoRef      = useRef<HTMLVideoElement>(null)
+  const containerRef  = useRef<HTMLDivElement>(null)
+  const fileInputRef  = useRef<HTMLInputElement>(null)
 
-  const [tab, setTab] = useState<Tab>('transcript')
-  const [playing, setPlaying] = useState(false)
-  const [muted, setMuted] = useState(false)
-  const [volume, setVolume] = useState(1)
+  const [tab, setTab]               = useState<Tab>('transcript')
+  const [playing, setPlaying]       = useState(false)
+  const [muted, setMuted]           = useState(false)
+  const [volume, setVolume]         = useState(1)
   const [currentSec, setCurrentSec] = useState(0)
-  const [durationSec, setDurationSec] = useState(0)
-  const [speed, setSpeed] = useState(1)
+  const [durationSec, setDuration]  = useState(0)
+  const [speed, setSpeed]           = useState(1)
   const [fullscreen, setFullscreen] = useState(false)
-  const [subtitleText, setSubtitleText] = useState('')
-  const [isDraggingOver, setIsDraggingOver] = useState(false)
+  const [subtitle, setSubtitle]     = useState('')
+  const [dragging, setDragging]     = useState(false)
 
-  // Refresh model status on mount
   useEffect(() => { refreshModels() }, [refreshModels])
 
-  // ── Session restore (from History page) ───────────────────────────────
+  // ── Session restore (navigated from History) ───────────────────────────
   useEffect(() => {
     const { sessionId, segments } = store
-    if (sessionId && segments.length === 0) {
-      // Restore transcript, sentiment, summary from API
-      Promise.allSettled([
-        transcriptApi.get(sessionId),
-        transcriptApi.getSentiment(sessionId),
-        transcriptApi.getSummary(sessionId),
-      ]).then(([tRes, sRes, sumRes]) => {
-        if (tRes.status === 'fulfilled' && tRes.value?.segments?.length) {
-          store.setSegments(tRes.value.segments)
-        }
-        if (sRes.status === 'fulfilled' && sRes.value) {
-          store.setSentiment(sRes.value as SentimentResult)
-        }
-        if (sumRes.status === 'fulfilled' && sumRes.value) {
-          store.setSummary(sumRes.value as SummaryResult)
-        }
-        if (tRes.status === 'fulfilled' && tRes.value?.segments?.length) {
-          store.setStage('done', 100)
-        }
-      })
-    }
+    if (!sessionId || segments.length > 0) return
+    Promise.allSettled([
+      transcriptApi.get(sessionId),
+      transcriptApi.getSentiment(sessionId),
+      transcriptApi.getSummary(sessionId),
+    ]).then(([t, s, sum]) => {
+      if (t.status === 'fulfilled' && t.value?.segments?.length) {
+        store.setSegments(t.value.segments)
+        store.setStage('done', 100)
+      }
+      if (s.status   === 'fulfilled' && s.value)   store.setSentiment(s.value as SentimentResult)
+      if (sum.status === 'fulfilled' && sum.value)  store.setSummary(sum.value as SummaryResult)
+    })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // run once on mount
+  }, [])
 
-  // ── Player events ──────────────────────────────────────────────────────
+  // ── Player ─────────────────────────────────────────────────────────────
   const onTimeUpdate = useCallback(() => {
-    const vid = videoRef.current
-    if (!vid) return
-    const ms = vid.currentTime * 1000
-    setCurrentSec(vid.currentTime)
+    const v = videoRef.current; if (!v) return
+    const ms = v.currentTime * 1000
+    setCurrentSec(v.currentTime)
     store.setCurrentTimeMs(ms)
-    const active = store.segments.find(s => ms >= s.startMs && ms <= s.endMs)
-    setSubtitleText(active?.text ?? '')
+    setSubtitle(store.segments.find(s => ms >= s.startMs && ms <= s.endMs)?.text ?? '')
   }, [store])
 
-  const onLoadedMetadata = () => {
-    if (videoRef.current) setDurationSec(videoRef.current.duration)
-  }
+  const onMeta = () => { if (videoRef.current) setDuration(videoRef.current.duration) }
 
   const togglePlay = () => {
-    const vid = videoRef.current
-    if (!vid) return
-    if (vid.paused) { vid.play(); setPlaying(true) }
-    else { vid.pause(); setPlaying(false) }
+    const v = videoRef.current; if (!v) return
+    v.paused ? (v.play(), setPlaying(true)) : (v.pause(), setPlaying(false))
   }
 
-  const seek = (delta: number) => {
-    const vid = videoRef.current
-    if (vid) vid.currentTime = Math.max(0, Math.min(durationSec, vid.currentTime + delta))
+  const skip = (d: number) => {
+    const v = videoRef.current
+    if (v) v.currentTime = Math.max(0, Math.min(durationSec, v.currentTime + d))
   }
 
   const seekToMs = (ms: number) => {
-    const vid = videoRef.current
-    if (!vid) return
-    vid.currentTime = ms / 1000
-    if (vid.paused) { vid.play(); setPlaying(true) }
+    const v = videoRef.current; if (!v) return
+    v.currentTime = ms / 1000
+    v.paused && (v.play(), setPlaying(true))
   }
 
-  const onVolumeChange = (v: number) => {
-    setVolume(v); setMuted(v === 0)
-    if (videoRef.current) videoRef.current.volume = v
+  const setVol = (val: number) => {
+    setVolume(val); setMuted(val === 0)
+    if (videoRef.current) videoRef.current.volume = val
   }
 
   const toggleMute = () => {
-    const vid = videoRef.current
-    if (!vid) return
-    vid.muted = !vid.muted; setMuted(vid.muted)
+    const v = videoRef.current; if (!v) return
+    v.muted = !v.muted; setMuted(v.muted)
   }
 
-  const onSpeedChange = (s: number) => {
-    setSpeed(s)
-    if (videoRef.current) videoRef.current.playbackRate = s
+  const setSpd = (s: number) => {
+    setSpeed(s); if (videoRef.current) videoRef.current.playbackRate = s
   }
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen(); setFullscreen(true)
-    } else {
-      document.exitFullscreen(); setFullscreen(false)
-    }
+  const toggleFs = () => {
+    document.fullscreenElement
+      ? document.exitFullscreen()
+      : containerRef.current?.requestFullscreen()
   }
 
   useEffect(() => {
@@ -137,317 +141,306 @@ export function Playground() {
     return () => document.removeEventListener('fullscreenchange', h)
   }, [])
 
-  // ── File loading ───────────────────────────────────────────────────────
-  const loadFile = (file: File) => {
-    store.reset(); store.setMediaFile(file)
-    setPlaying(false); setCurrentSec(0); setSubtitleText('')
+  // ── File load ──────────────────────────────────────────────────────────
+  const loadFile = (f: File) => {
+    store.reset(); store.setMediaFile(f)
+    setPlaying(false); setCurrentSec(0); setSubtitle('')
   }
-
-  const onFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (f) loadFile(f); e.target.value = ''
   }
-
   const onDrop = (e: React.DragEvent) => {
-    e.preventDefault(); setIsDraggingOver(false)
+    e.preventDefault(); setDragging(false)
     const f = e.dataTransfer.files[0]; if (f) loadFile(f)
   }
 
-  // ── Analysis ───────────────────────────────────────────────────────────
+  // ── Analyse ────────────────────────────────────────────────────────────
   const analyse = async () => {
     if (!store.mediaFile || !isReady('transcribe')) return
     store.setStage('audio', 0)
     try {
-      // Photino exposes the real FS path on `file.path` (non-standard Web API property)
-      const filePath: string = (store.mediaFile as any).path ?? store.mediaFile.name
-      const { sessionId } = await mediaApi.analyze(filePath)
+      const fp: string = (store.mediaFile as any).path ?? store.mediaFile.name
+      const { sessionId } = await mediaApi.analyze(fp)
       store.setSessionId(sessionId)
       const hub = await joinSession(sessionId)
+      hub.off('AnalysisProgress'); hub.off('TranscriptSegment')
+      hub.off('AnalysisComplete'); hub.off('AnalysisError')
 
-      // Remove any stale handlers before registering new ones
-      hub.off('AnalysisProgress')
-      hub.off('TranscriptSegment')
-      hub.off('AnalysisComplete')
-      hub.off('AnalysisError')
-
-      hub.on('AnalysisProgress', (data: { stage: string; percent: number }) => {
-        store.setStage(data.stage as any, data.percent)
-      })
-      hub.on('TranscriptSegment', (seg: SpeakerSegment) => {
-        store.addSegment(seg)
-      })
+      hub.on('AnalysisProgress', (d: { stage: string; percent: number }) =>
+        store.setStage(d.stage as any, d.percent))
+      hub.on('TranscriptSegment', (seg: SpeakerSegment) => store.addSegment(seg))
       hub.on('AnalysisComplete', async () => {
         store.setStage('done', 100)
-        const [sRes, sumRes] = await Promise.allSettled([
+        const [sr, sumr] = await Promise.allSettled([
           transcriptApi.getSentiment(sessionId),
           transcriptApi.getSummary(sessionId),
         ])
-        if (sRes.status === 'fulfilled') store.setSentiment(sRes.value as SentimentResult)
-        if (sumRes.status === 'fulfilled') store.setSummary(sumRes.value as SummaryResult)
-        leaveSession(sessionId)
-        refreshModels()
+        if (sr.status   === 'fulfilled') store.setSentiment(sr.value as SentimentResult)
+        if (sumr.status === 'fulfilled') store.setSummary(sumr.value as SummaryResult)
+        leaveSession(sessionId); refreshModels()
       })
-      hub.on('AnalysisError', (data: { error: string }) => {
-        store.setError(data.error)
-        leaveSession(sessionId)
+      hub.on('AnalysisError', (d: { error: string }) => {
+        store.setError(d.error); leaveSession(sessionId)
       })
-    } catch (err: any) {
-      store.setError(err?.response?.data?.error ?? err?.message ?? 'Unknown error')
+    } catch (e: any) {
+      store.setError(e?.response?.data?.error ?? e?.message ?? 'Unknown error')
     }
   }
 
-  const stageLabel: Record<string, string> = {
-    idle: '', audio: 'Loading audio…', vad: 'Detecting speech…', asr: 'Transcribing…',
-    diarization: 'Identifying speakers…', sentiment: 'Analysing sentiment…',
-    saving: 'Saving…', summary: 'Summarising…', done: 'Complete', error: 'Error',
+  const STAGE_LABEL: Record<string, string> = {
+    idle: '', audio: 'Loading audio…', vad: 'Detecting speech…',
+    asr: 'Transcribing…', diarization: 'Identifying speakers…',
+    sentiment: 'Analysing sentiment…', saving: 'Saving…',
+    summary: 'Summarising…', done: 'Complete', error: 'Error',
   }
 
-  const isAnalysing = !['idle', 'done', 'error'].includes(store.stage)
-  const totalDurationMs = durationSec * 1000
-  const canAnalyse = !!store.mediaFile && store.stage === 'idle' && isReady('transcribe')
-  const noTranscribeModel = store.mediaFile && store.stage === 'idle' && !isReady('transcribe')
+  const isAnalysing    = !['idle', 'done', 'error'].includes(store.stage)
+  const canAnalyse     = !!store.mediaFile && store.stage === 'idle' && isReady('transcribe')
+  const needsModel     = !!store.mediaFile && store.stage === 'idle' && !isReady('transcribe')
+  const totalDurMs     = durationSec * 1000
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'transcript', label: 'Transcript' },
-    { id: 'sentiment', label: 'Sentiment' },
-    { id: 'summary', label: 'Summary' },
-    { id: 'cli', label: '🤖 Ask AI' },
+    { id: 'sentiment',  label: 'Sentiment'  },
+    { id: 'summary',    label: 'Summary'    },
+    { id: 'cli',        label: '🤖 Ask AI'  },
   ]
 
+  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div
       ref={containerRef}
-      className="flex h-screen w-screen flex-col"
-      style={{ background: '#1a1210', color: '#f5dbb8' }}
+      style={{
+        height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
+        background: P.bg, color: P.text, overflow: 'hidden',
+      }}
     >
-      {/* ── Top nav ── */}
-      <div
-        className="flex shrink-0 items-center justify-between px-4 py-2"
-        style={{ borderBottom: '1px solid rgba(242,163,91,0.12)', background: '#2a1f1b' }}
-      >
-        <Link to="/landing" className="flex items-center gap-2 text-sm opacity-70 hover:opacity-100 transition-opacity">
-          <img src="/owlia.svg" alt="OWLIA" className="h-6 w-6" />
-          <span className="font-semibold">OWLIA</span>
-        </Link>
-        <div className="flex items-center gap-3 text-xs">
-          {isAnalysing && (
-            <span className="flex items-center gap-1.5" style={{ color: '#d0805f' }}>
-              <Loader2 size={12} className="animate-spin" />
-              {stageLabel[store.stage]} {store.progress}%
-            </span>
-          )}
-          {store.stage === 'error' && (
-            <span className="flex items-center gap-1.5 text-red-400">
-              <AlertCircle size={12} /> {store.error}
-            </span>
-          )}
-          <Link to="/history" className="opacity-60 hover:opacity-100 transition-opacity">History</Link>
-          <Link to="/download" className="opacity-60 hover:opacity-100 transition-opacity">Download</Link>
+      {/* ── Top bar ─────────────────────────────────────────────────────── */}
+      <div style={{ background: P.bar, borderBottom: `1px solid ${P.border}`, flexShrink: 0 }}>
+        <div style={{
+          maxWidth: 1400, margin: '0 auto', padding: '0 24px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 44,
+        }}>
+          <Link to="/landing" style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: 0.75, textDecoration: 'none', color: P.text }}>
+            <img src="/owlia.svg" alt="OWLIA" style={{ width: 22, height: 22 }} />
+            <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>OWLIA</span>
+          </Link>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: '0.72rem' }}>
+            {isAnalysing && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: P.muted }}>
+                <Loader2 size={11} className="animate-spin" />
+                {STAGE_LABEL[store.stage]} {store.progress}%
+              </span>
+            )}
+            {store.stage === 'error' && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#f87171' }}>
+                <AlertCircle size={11} /> {store.error}
+              </span>
+            )}
+            <Link to="/history"  style={{ opacity: 0.55, textDecoration: 'none', color: P.text }}>History</Link>
+            <Link to="/download" style={{ opacity: 0.55, textDecoration: 'none', color: P.text }}>Download</Link>
+          </div>
         </div>
       </div>
 
-      {/* ── Player area ── */}
-      <div
-        className="relative flex flex-col items-center justify-center overflow-hidden"
-        style={{ background: '#0d0907', minHeight: 0, flex: '1 1 0' }}
-        onDragOver={e => { e.preventDefault(); setIsDraggingOver(true) }}
-        onDragLeave={() => setIsDraggingOver(false)}
-        onDrop={onDrop}
-      >
-        {isDraggingOver && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center border-2 border-dashed border-[#f2a35b] bg-[#f2a35b08]">
-            <p className="text-lg font-semibold text-[#f2a35b]">Drop media file here</p>
-          </div>
-        )}
+      {/* ── Main centred column ─────────────────────────────────────────── */}
+      <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{
+          maxWidth: 1400, width: '100%', margin: '0 auto',
+          padding: '0 clamp(12px, 3vw, 40px)',
+          flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column',
+        }}>
 
-        {store.mediaUrl ? (
-          <video
-            ref={videoRef}
-            src={store.mediaUrl}
-            className="max-h-full max-w-full"
-            onTimeUpdate={onTimeUpdate}
-            onLoadedMetadata={onLoadedMetadata}
-            onPlay={() => setPlaying(true)}
-            onPause={() => setPlaying(false)}
-            onEnded={() => setPlaying(false)}
-          />
-        ) : (
-          <div className="flex flex-col items-center gap-3 opacity-30">
-            <img src="/owlia.svg" alt="" className="h-14 w-14" />
-            <p className="text-sm">Drag a file here or click Add Media</p>
-          </div>
-        )}
-
-        {/* Subtitle overlay */}
-        {subtitleText && (
+          {/* ── Player ────────────────────────────────────────────────── */}
           <div
-            className="absolute bottom-16 left-1/2 -translate-x-1/2 max-w-2xl rounded-xl px-5 py-2 text-center text-base font-medium"
-            style={{ background: 'rgba(0,0,0,0.74)', color: '#f5dbb8', backdropFilter: 'blur(6px)' }}
-          >
-            {subtitleText}
-          </div>
-        )}
-      </div>
-
-      {/* ── Spectrum visualizer ── */}
-      <div style={{ background: '#0d0907', height: 52, borderTop: '1px solid rgba(242,163,91,0.07)' }}>
-        <VoiceSpectrum
-          mediaRef={videoRef}
-          isPlaying={playing}
-          height={52}
-          barColor="#f2a35b"
-          barCount={80}
-        />
-      </div>
-
-      {/* ── Controls bar ── */}
-      <div
-        className="shrink-0 px-4 py-2"
-        style={{ background: '#2a1f1b', borderTop: '1px solid rgba(242,163,91,0.12)' }}
-      >
-        {/* Seek bar */}
-        <input
-          type="range" min={0} max={durationSec || 100} step={0.1} value={currentSec}
-          className="mb-2 h-1 w-full cursor-pointer accent-[#f2a35b]"
-          onChange={e => {
-            const v = parseFloat(e.target.value)
-            setCurrentSec(v)
-            if (videoRef.current) videoRef.current.currentTime = v
-          }}
-        />
-
-        <div className="flex items-center gap-3">
-          <button type="button" onClick={() => seek(-10)} title="Back 10s" className="opacity-70 hover:opacity-100 transition-opacity">
-            <SkipBack size={17} />
-          </button>
-          <button
-            type="button" onClick={togglePlay}
-            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-[#f2a35b22]"
-          >
-            {playing ? <Pause size={20} /> : <Play size={20} />}
-          </button>
-          <button type="button" onClick={() => seek(10)} title="Forward 10s" className="opacity-70 hover:opacity-100 transition-opacity">
-            <SkipForward size={17} />
-          </button>
-
-          <span className="text-xs font-mono opacity-60">
-            {fmtTime(currentSec)} / {fmtTime(durationSec)}
-          </span>
-
-          <select
-            value={speed}
-            onChange={e => onSpeedChange(parseFloat(e.target.value))}
-            className="rounded bg-transparent text-xs opacity-70 hover:opacity-100"
-            style={{ color: '#f5dbb8' }}
-          >
-            {[0.5, 0.75, 1, 1.25, 1.5, 2, 3].map(s => (
-              <option key={s} value={s} style={{ background: '#2a1f1b' }}>{s}×</option>
-            ))}
-          </select>
-
-          <div className="flex-1" />
-
-          <button type="button" onClick={toggleMute} className="opacity-70 hover:opacity-100 transition-opacity">
-            {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-          </button>
-          <input
-            type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
-            className="w-20 accent-[#f2a35b]"
-            onChange={e => onVolumeChange(parseFloat(e.target.value))}
-          />
-
-          {/* Analyse / gated */}
-          {canAnalyse && (
-            <button
-              type="button" onClick={analyse}
-              className="rounded-full px-4 py-1.5 text-xs font-semibold transition-all hover:brightness-110 active:scale-95"
-              style={{ background: '#f2a35b', color: '#1a1210' }}
-            >
-              Analyse
-            </button>
-          )}
-          {noTranscribeModel && (
-            <Link
-              to="/download"
-              className="rounded-full px-4 py-1.5 text-xs font-semibold transition-all hover:brightness-110"
-              style={{ background: '#875d54', color: '#f5dbb8' }}
-              title="Whisper + Silero VAD models required"
-            >
-              ⚠ Models needed
-            </Link>
-          )}
-
-          <button
-            type="button" onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium opacity-70 hover:opacity-100 transition-opacity"
-            style={{ border: '1px solid rgba(242,163,91,0.3)' }}
-          >
-            <Plus size={13} /> Add Media
-          </button>
-          <input ref={fileInputRef} type="file" accept="audio/*,video/*" className="hidden" onChange={onFileInput} />
-
-          <button type="button" onClick={toggleFullscreen} className="opacity-70 hover:opacity-100 transition-opacity">
-            {fullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
-          </button>
-        </div>
-      </div>
-
-      {/* ── Analysis progress bar ── */}
-      {isAnalysing && (
-        <div className="shrink-0 px-4 pb-1" style={{ background: '#2a1f1b' }}>
-          <ProgressBar value={store.progress} color="#f2a35b" className="h-[3px]" />
-          <p className="mt-0.5 text-right text-[10px] opacity-40">{stageLabel[store.stage]}</p>
-        </div>
-      )}
-
-      {/* ── Tabs ── */}
-      <div
-        className="flex shrink-0 gap-1 px-3"
-        style={{ borderBottom: '1px solid rgba(242,163,91,0.12)', background: '#2a1f1b' }}
-      >
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className="pb-2 pt-3 px-2 text-xs font-medium transition-colors whitespace-nowrap"
             style={{
-              color: tab === t.id ? '#f2a35b' : '#878787',
-              borderBottom: tab === t.id ? '2px solid #f2a35b' : '2px solid transparent',
+              position: 'relative', flex: '1 1 0', minHeight: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: '#080604', borderRadius: 12, marginTop: 16,
+              overflow: 'hidden', cursor: store.mediaUrl ? 'default' : 'pointer',
             }}
+            onDragOver={e => { e.preventDefault(); setDragging(true) }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={onDrop}
+            onClick={() => !store.mediaUrl && fileInputRef.current?.click()}
           >
-            {t.label}
-          </button>
-        ))}
-      </div>
+            {dragging && (
+              <div style={{
+                position: 'absolute', inset: 0, zIndex: 50,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: `2px dashed ${P.accent}`, borderRadius: 12,
+                background: 'rgba(242,163,91,0.06)',
+              }}>
+                <p style={{ color: P.accent, fontWeight: 600, fontSize: '1rem' }}>Drop media file</p>
+              </div>
+            )}
 
-      {/* ── Tab content ── */}
-      <div
-        className="min-h-0 flex-1 overflow-hidden"
-        style={{ background: '#1e1613', color: '#f5dbb8', '--text': '#f5dbb8', '--text-muted': '#d0805f', '--surface': '#2a1f1b', '--surface-2': '#3a2c26', '--border': 'rgba(242,163,91,0.14)', '--accent': '#f2a35b' } as React.CSSProperties}
-      >
-        {tab === 'transcript' && (
-          <ModelGate feature="transcribe">
-            <TranscriptList
-              segments={store.segments}
-              activeIndex={store.activeSegmentIndex}
-              onSeek={seekToMs}
+            {store.mediaUrl ? (
+              <video
+                ref={videoRef} src={store.mediaUrl}
+                style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 8 }}
+                onTimeUpdate={onTimeUpdate} onLoadedMetadata={onMeta}
+                onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)}
+              />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, opacity: 0.28 }}>
+                <img src="/owlia.svg" alt="" style={{ width: 56, height: 56 }} />
+                <p style={{ fontSize: '0.85rem' }}>Drag a file here or click Add Media</p>
+              </div>
+            )}
+
+            {/* Subtitle */}
+            {subtitle && (
+              <div style={{
+                position: 'absolute', bottom: 48, left: '50%', transform: 'translateX(-50%)',
+                maxWidth: '75%', background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(8px)',
+                borderRadius: 10, padding: '6px 16px', fontSize: '0.9rem',
+                fontWeight: 500, color: '#f5dbb8', textAlign: 'center', pointerEvents: 'none',
+              }}>
+                {subtitle}
+              </div>
+            )}
+          </div>
+
+          {/* ── Spectrum ──────────────────────────────────────────────── */}
+          <div style={{ height: 44, background: '#080604', borderTop: `1px solid ${P.border}`, borderRadius: '0 0 4px 4px', marginBottom: 0 }}>
+            <VoiceSpectrum mediaRef={videoRef} isPlaying={playing} height={44} barColor={P.accent} barCount={80} />
+          </div>
+
+          {/* ── Controls ──────────────────────────────────────────────── */}
+          <div style={{ background: P.bar, borderRadius: 10, padding: '8px 16px', marginTop: 8, flexShrink: 0 }}>
+            {/* Seek bar */}
+            <input
+              type="range" min={0} max={durationSec || 100} step={0.1} value={currentSec}
+              style={{ width: '100%', accentColor: P.accent, height: 3, marginBottom: 8, display: 'block', cursor: 'pointer' }}
+              onChange={e => { const v = +e.target.value; setCurrentSec(v); if (videoRef.current) videoRef.current.currentTime = v }}
             />
-          </ModelGate>
-        )}
-        {tab === 'sentiment' && (
-          <ModelGate feature="sentiment">
-            <SentimentView sentiment={store.sentiment} totalDurationMs={totalDurationMs} />
-          </ModelGate>
-        )}
-        {tab === 'summary' && (
-          <ModelGate feature="summary">
-            <SummaryView summary={store.summary} />
-          </ModelGate>
-        )}
-        {tab === 'cli' && (
-          <CliPanel sessionId={store.sessionId} />
-        )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              {/* Transport */}
+              <button onClick={() => skip(-10)} style={iconBtn(P.text)} title="−10s"><SkipBack size={16} /></button>
+              <button onClick={togglePlay}
+                style={{ ...iconBtn(P.text), width: 36, height: 36, borderRadius: '50%', background: `${P.accent}22` }}>
+                {playing ? <Pause size={18} /> : <Play size={18} />}
+              </button>
+              <button onClick={() => skip(10)} style={iconBtn(P.text)} title="+10s"><SkipForward size={16} /></button>
+
+              <span style={{ fontSize: '0.72rem', fontFamily: 'monospace', opacity: 0.5, marginLeft: 4 }}>
+                {fmtTime(currentSec)} / {fmtTime(durationSec)}
+              </span>
+
+              <select
+                value={speed} onChange={e => setSpd(+e.target.value)}
+                style={{ background: 'transparent', border: 'none', color: P.text, fontSize: '0.72rem', opacity: 0.65, cursor: 'pointer' }}
+              >
+                {[0.5, 0.75, 1, 1.25, 1.5, 2, 3].map(s => (
+                  <option key={s} value={s} style={{ background: P.bar }}>{s}×</option>
+                ))}
+              </select>
+
+              <div style={{ flex: 1 }} />
+
+              {/* Volume */}
+              <button onClick={toggleMute} style={iconBtn(P.text)}>
+                {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+              </button>
+              <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
+                style={{ width: 72, accentColor: P.accent, cursor: 'pointer' }}
+                onChange={e => setVol(+e.target.value)} />
+
+              {/* Action buttons */}
+              {canAnalyse && (
+                <button onClick={analyse}
+                  style={{ background: P.accent, color: '#1a1210', border: 'none', borderRadius: 100, padding: '5px 16px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>
+                  Analyse
+                </button>
+              )}
+              {needsModel && (
+                <Link to="/download"
+                  style={{ background: '#875d54', color: '#f5dbb8', borderRadius: 100, padding: '5px 14px', fontSize: '0.75rem', fontWeight: 600, textDecoration: 'none' }}
+                  title="Whisper + VAD models required">
+                  ⚠ Models needed
+                </Link>
+              )}
+
+              <button onClick={() => fileInputRef.current?.click()}
+                style={{ ...iconBtn(P.text), border: `1px solid ${P.border}`, borderRadius: 100, padding: '4px 12px', fontSize: '0.72rem', gap: 5, display: 'flex', alignItems: 'center' }}>
+                <Plus size={12} /> Add Media
+              </button>
+              <input ref={fileInputRef} type="file" accept="audio/*,video/*" style={{ display: 'none' }} onChange={onInput} />
+
+              <button onClick={toggleFs} style={iconBtn(P.text)}>
+                {fullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Analysis progress */}
+          {isAnalysing && (
+            <div style={{ padding: '2px 0 4px' }}>
+              <ProgressBar value={store.progress} color={P.accent} className="h-[2px]" />
+              <p style={{ textAlign: 'right', fontSize: '0.65rem', opacity: 0.35, marginTop: 2 }}>
+                {STAGE_LABEL[store.stage]}
+              </p>
+            </div>
+          )}
+
+          {/* ── Tabs + panel ──────────────────────────────────────────── */}
+          <div style={{
+            display: 'flex', flexDirection: 'column', flex: '0 0 300px',
+            minHeight: 260, marginTop: 10, marginBottom: 16,
+            background: P.surface, borderRadius: 12, border: `1px solid ${P.border}`, overflow: 'hidden',
+          }}>
+            {/* Tab bar */}
+            <div style={{ display: 'flex', borderBottom: `1px solid ${P.border}`, background: P.panel, flexShrink: 0 }}>
+              {TABS.map(t => (
+                <button
+                  key={t.id} type="button" onClick={() => setTab(t.id)}
+                  style={{
+                    padding: '10px 16px', fontSize: '0.78rem', fontWeight: 600,
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color:        tab === t.id ? P.accent : P.muted,
+                    borderBottom: tab === t.id ? `2px solid ${P.accent}` : '2px solid transparent',
+                    transition: 'color 0.15s',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab content */}
+            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', ...DARK_VARS }}>
+              {tab === 'transcript' && (
+                <ModelGate feature="transcribe">
+                  <TranscriptList segments={store.segments} activeIndex={store.activeSegmentIndex} onSeek={seekToMs} />
+                </ModelGate>
+              )}
+              {tab === 'sentiment' && (
+                <ModelGate feature="sentiment">
+                  <SentimentView sentiment={store.sentiment} totalDurationMs={totalDurMs} />
+                </ModelGate>
+              )}
+              {tab === 'summary' && (
+                <ModelGate feature="summary">
+                  <SummaryView summary={store.summary} />
+                </ModelGate>
+              )}
+              {tab === 'cli' && <CliPanel sessionId={store.sessionId} />}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
+}
+
+// Small reusable button style helper
+function iconBtn(textColor: string): React.CSSProperties {
+  return {
+    background: 'none', border: 'none', color: textColor,
+    cursor: 'pointer', opacity: 0.65, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: 4, borderRadius: 6, transition: 'opacity 0.15s',
+  }
 }

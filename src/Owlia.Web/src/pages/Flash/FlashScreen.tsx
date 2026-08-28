@@ -2,91 +2,137 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
-const FLASH_DURATION_MS = 5000
+const FLASH_MS = 5000
 const BRAND = 'OWLIA'
+const TAGLINE = 'Offline Voice & Language Intelligence Analytics'
 
 export function FlashScreen() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const timer = setTimeout(() => navigate('/landing', { replace: true }), FLASH_DURATION_MS)
-    return () => clearTimeout(timer)
+    const t = setTimeout(() => navigate('/landing', { replace: true }), FLASH_MS)
+    return () => clearTimeout(t)
   }, [navigate])
 
   return (
     <div
-      className="relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden"
-      style={{ background: 'var(--bg)' }}
+      className="bg-stripe relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden"
+      style={{ background: '#1a1210' }}
     >
-      {/* Radial glow background */}
-      <motion.div
+      {/* ── Deep vignette — keeps centre dark and dramatic ── */}
+      <div
         className="pointer-events-none absolute inset-0"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1.2 }}
         style={{
           background:
-            'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(242,163,91,0.18) 0%, transparent 70%)',
+            'radial-gradient(ellipse 70% 70% at 50% 50%, transparent 20%, #1a1210 80%)',
         }}
       />
 
-      {/* Owl logo — scale in + glow pulse */}
+      {/* ── Warm amber bloom behind the icon ── */}
       <motion.div
-        initial={{ scale: 0.4, opacity: 0 }}
+        className="pointer-events-none absolute"
+        style={{
+          width: 320, height: 320,
+          borderRadius: '50%',
+          background:
+            'radial-gradient(circle, rgba(254,185,3,0.18) 0%, rgba(242,163,91,0.10) 40%, transparent 70%)',
+          filter: 'blur(32px)',
+        }}
+        initial={{ scale: 0.6, opacity: 0 }}
+        animate={{ scale: [1, 1.12, 1], opacity: [0.6, 1, 0.6] }}
+        transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
+      />
+
+      {/* ── Icon container: subtle circle background + ring ── */}
+      <motion.div
+        className="relative flex items-center justify-center"
+        initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1] }}
-        className="relative"
+        transition={{ duration: 0.7, ease: [0.34, 1.56, 0.64, 1] }}
       >
+        {/* Outer glow ring — pulsing */}
         <motion.div
-          className="absolute inset-0 rounded-full"
-          animate={{
-            boxShadow: [
-              '0 0 0px 0px rgba(254,185,3,0)',
-              '0 0 40px 20px rgba(254,185,3,0.35)',
-              '0 0 20px 10px rgba(254,185,3,0.15)',
-              '0 0 40px 20px rgba(254,185,3,0.35)',
-            ],
+          className="absolute rounded-full"
+          style={{
+            width: 160, height: 160,
+            background: 'transparent',
+            border: '1.5px solid rgba(254,185,3,0.35)',
           }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
+          animate={{ scale: [1, 1.18, 1], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
         />
-        <img src="/owlia.svg" alt="OWLIA" className="relative h-28 w-28 drop-shadow-lg" />
+
+        {/* Icon background disc — warm surface so the coloured SVG reads clearly */}
+        <div
+          className="relative flex items-center justify-center rounded-full"
+          style={{
+            width: 120, height: 120,
+            background:
+              'radial-gradient(circle at 40% 35%, #3a2a1e 0%, #241810 100%)',
+            border: '1.5px solid rgba(242,163,91,0.25)',
+            boxShadow:
+              '0 0 0 8px rgba(242,163,91,0.06), 0 0 32px rgba(254,185,3,0.12)',
+          }}
+        >
+          <img
+            src="/owlia.svg"
+            alt="OWLIA owl"
+            style={{ width: 72, height: 72, filter: 'drop-shadow(0 2px 8px rgba(254,185,3,0.30))' }}
+          />
+        </div>
       </motion.div>
 
-      {/* Brand name — letter by letter */}
-      <div className="mt-8 flex gap-[0.05em]">
-        {BRAND.split('').map((letter, i) => (
+      {/* ── Brand name — letter by letter reveal ── */}
+      <div className="mt-9 flex items-baseline gap-[2px]">
+        {BRAND.split('').map((ch, i) => (
           <motion.span
             key={i}
-            className="text-4xl font-bold tracking-widest"
-            style={{ color: 'var(--text)' }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.9 + i * 0.12, ease: 'easeOut' }}
+            style={{
+              color: '#f5dbb8',
+              fontWeight: 700,
+              fontSize: '2.5rem',
+              letterSpacing: '0.25em',
+              lineHeight: 1,
+            }}
+            initial={{ opacity: 0, y: 16, filter: 'blur(6px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ duration: 0.45, delay: 0.75 + i * 0.11, ease: 'easeOut' }}
           >
-            {letter}
+            {ch}
           </motion.span>
         ))}
       </div>
 
-      {/* Tagline — fade in */}
+      {/* ── Amber accent line under brand ── */}
+      <motion.div
+        style={{ height: 2, background: 'linear-gradient(90deg, transparent, #f2a35b, transparent)', borderRadius: 1 }}
+        initial={{ width: 0, opacity: 0 }}
+        animate={{ width: 140, opacity: 1 }}
+        transition={{ duration: 0.6, delay: 1.6, ease: 'easeOut' }}
+      />
+
+      {/* ── Tagline ── */}
       <motion.p
-        className="mt-3 text-sm tracking-wide"
-        style={{ color: 'var(--text-muted)' }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.8, delay: 1.8 }}
+        style={{ color: '#d0805f', fontSize: '0.72rem', letterSpacing: '0.06em', marginTop: '0.75rem' }}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, delay: 1.95, ease: 'easeOut' }}
       >
-        Offline Voice &amp; Language Intelligence Analytics
+        {TAGLINE}
       </motion.p>
 
-      {/* Progress bar at bottom */}
-      <motion.div
-        className="absolute bottom-0 left-0 h-[2px]"
-        style={{ background: 'var(--accent)' }}
-        initial={{ width: '0%' }}
-        animate={{ width: '100%' }}
-        transition={{ duration: FLASH_DURATION_MS / 1000, ease: 'linear' }}
-      />
+      {/* ── Bottom progress bar ── */}
+      <div
+        className="absolute bottom-0 left-0 right-0"
+        style={{ height: 2, background: 'rgba(242,163,91,0.12)' }}
+      >
+        <motion.div
+          style={{ height: '100%', background: 'linear-gradient(90deg, #f2a35b, #feb903)', originX: 0 }}
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: FLASH_MS / 1000, ease: 'linear' }}
+        />
+      </div>
     </div>
   )
 }

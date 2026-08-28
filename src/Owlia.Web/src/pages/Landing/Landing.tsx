@@ -116,80 +116,278 @@ export function Landing() {
       {/* ══ HERO ══════════════════════════════════════════════════════════════ */}
       <section
         className="bg-grid relative overflow-hidden"
-        style={{ minHeight: '92vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 24px 64px' }}
+        style={{ minHeight: '92vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '80px 24px 48px' }}
       >
         {/* Centred amber bloom */}
         <div
           className="pointer-events-none absolute"
           style={{
-            width: 700, height: 480, left: '50%', top: '50%',
+            width: 700, height: 480, left: '35%', top: '50%',
             transform: 'translate(-50%,-50%)',
             background: 'radial-gradient(ellipse, rgba(242,163,91,0.15) 0%, rgba(254,185,3,0.07) 50%, transparent 72%)',
             filter: 'blur(40px)',
           }}
         />
 
-        <motion.div
-          initial={{ opacity: 0, y: 28 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.65 }}
-          style={{ position: 'relative', maxWidth: 720, textAlign: 'center' }}
+        {/* ── Two-column row: text + product mockup ── */}
+        <div
+          className="relative"
+          style={{
+            maxWidth: 1140, margin: '0 auto', width: '100%',
+            display: 'flex', alignItems: 'center', gap: 'clamp(32px, 4vw, 72px)',
+            flexWrap: 'wrap',
+          }}
         >
-          {/* Badge */}
-          <div
-            className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-widest mb-6"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--accent)' }}
+          {/* ── Left: text + buttons ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 28 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65 }}
+            style={{ flex: '1 1 380px', minWidth: 300 }}
           >
-            100 % Offline · ONNX · Windows 10 / 11
-          </div>
-
-          <h1
-            style={{
-              fontSize: 'clamp(2.2rem, 5vw, 3.6rem)',
-              fontWeight: 800,
-              lineHeight: 1.12,
-              letterSpacing: '-0.02em',
-              marginBottom: '1.25rem',
-            }}
-          >
-            Every conversation,{' '}
-            <span style={{ color: 'var(--accent)' }}>fully understood.</span>
-          </h1>
-
-          <p
-            style={{
-              fontSize: 'clamp(1rem, 2vw, 1.15rem)',
-              lineHeight: 1.7,
-              color: 'var(--text-muted)',
-              maxWidth: 580,
-              margin: '0 auto 2.5rem',
-            }}
-          >
-            Speech-to-text, speaker diarization, sentiment analysis, summarisation
-            and text-to-speech — powered by local ONNX models.
-            Zero data leaves your machine.
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Link
-              to="/playground"
-              className="inline-flex items-center gap-2 rounded-full font-semibold transition-all hover:brightness-110 active:scale-95"
-              style={{ background: 'var(--accent)', color: '#1a1210', padding: '0.75rem 1.75rem', fontSize: '0.95rem' }}
+            {/* Badge */}
+            <div
+              className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-widest mb-6"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--accent)' }}
             >
-              Open Playground <ArrowRight size={15} />
-            </Link>
-            <Link
-              to="/download"
-              className="inline-flex items-center gap-2 rounded-full font-semibold transition-all hover:brightness-105"
-              style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '0.75rem 1.75rem', fontSize: '0.95rem' }}
-            >
-              Get Models
-            </Link>
-          </div>
-        </motion.div>
+              100 % Offline · ONNX · Windows 10 / 11
+            </div>
 
-        {/* Three pillars */}
-        <div className="relative mt-16 flex flex-wrap justify-center gap-4" style={{ maxWidth: 640, width: '100%' }}>
+            <h1
+              style={{
+                fontSize: 'clamp(2rem, 4vw, 3.2rem)',
+                fontWeight: 800,
+                lineHeight: 1.12,
+                letterSpacing: '-0.02em',
+                marginBottom: '1.25rem',
+              }}
+            >
+              Every conversation,{' '}
+              <span style={{ color: 'var(--accent)' }}>fully understood.</span>
+            </h1>
+
+            <p
+              style={{
+                fontSize: 'clamp(0.95rem, 1.8vw, 1.1rem)',
+                lineHeight: 1.7,
+                color: 'var(--text-muted)',
+                maxWidth: 480,
+                marginBottom: '2rem',
+              }}
+            >
+              Speech-to-text, speaker diarization, sentiment analysis, summarisation
+              and text-to-speech — powered by local ONNX models.
+              Zero data leaves your machine.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                to="/playground"
+                className="inline-flex items-center gap-2 rounded-full font-semibold transition-all hover:brightness-110 active:scale-95"
+                style={{ background: 'var(--accent)', color: '#1a1210', padding: '0.75rem 1.75rem', fontSize: '0.95rem' }}
+              >
+                Open Playground <ArrowRight size={15} />
+              </Link>
+              <Link
+                to="/download"
+                className="inline-flex items-center gap-2 rounded-full font-semibold transition-all hover:brightness-105"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', padding: '0.75rem 1.75rem', fontSize: '0.95rem' }}
+              >
+                Get Models
+              </Link>
+            </div>
+          </motion.div>
+
+          {/* ── Right: product display browser chrome ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 36 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.75, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+            style={{ flex: '1 1 440px', minWidth: 340, position: 'relative' }}
+          >
+            {/* Subtle outer glow behind the frame */}
+            <div
+              style={{
+                position: 'absolute', inset: -20, zIndex: 0, pointerEvents: 'none',
+                borderRadius: 28,
+                background: 'radial-gradient(ellipse at 60% 50%, rgba(242,163,91,0.10) 0%, transparent 65%)',
+              }}
+            />
+
+            {/* Browser chrome frame */}
+            <div
+              style={{
+                position: 'relative', zIndex: 1,
+                borderRadius: 14,
+                border: '1px solid var(--border)',
+                overflow: 'hidden',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.15), 0 0 0 1px var(--border)',
+                background: 'var(--bg)',
+              }}
+            >
+              {/* Title bar */}
+              <div
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '10px 14px',
+                  background: 'var(--surface)',
+                  borderBottom: '1px solid var(--border)',
+                }}
+              >
+                <div style={{ display: 'flex', gap: 5, marginRight: 8 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f57' }} />
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ffbd2e' }} />
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#28c840' }} />
+                </div>
+                <div
+                  style={{
+                    flex: 1, display: 'flex', alignItems: 'center',
+                    background: 'var(--bg)', borderRadius: 7,
+                    padding: '4px 10px', fontSize: '0.68rem',
+                    color: 'var(--text-muted)', border: '1px solid var(--border)',
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  <span style={{ color: 'var(--accent)', marginRight: 5 }}>🔒</span>
+                  localhost:5173/playground
+                </div>
+              </div>
+
+              {/* Content — mock playground */}
+              <div style={{ display: 'flex', height: 340, overflow: 'hidden' }}>
+                {/* Sidebar */}
+                <div
+                  style={{
+                    width: 48, flexShrink: 0,
+                    background: 'var(--surface)',
+                    borderRight: '1px solid var(--border)',
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', padding: '14px 0', gap: 14,
+                  }}
+                >
+                  {[Mic, BarChart2, FileText, Volume2, Terminal].map((Icon, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: 32, height: 32, borderRadius: 9,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: i === 0 ? 'var(--accent)' : 'transparent',
+                        color: i === 0 ? '#1a1210' : 'var(--text-muted)',
+                      }}
+                    >
+                      <Icon size={14} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Main panel */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  {/* Toolbar */}
+                  <div
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '8px 14px',
+                      borderBottom: '1px solid var(--border)',
+                      background: 'var(--surface)',
+                    }}
+                  >
+                    <div style={{ flex: 1, display: 'flex', gap: 3 }}>
+                      {['Transcript', 'Sentiment', 'Summary'].map((tab, i) => (
+                        <div
+                          key={tab}
+                          style={{
+                            padding: '3px 10px', borderRadius: 7, fontSize: '0.68rem', fontWeight: 600,
+                            background: i === 0 ? 'var(--accent)' : 'transparent',
+                            color: i === 0 ? '#1a1210' : 'var(--text-muted)',
+                          }}
+                        >
+                          {tab}
+                        </div>
+                      ))}
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        padding: '3px 8px', borderRadius: 7,
+                        background: 'var(--bg)', border: '1px solid var(--border)',
+                        fontSize: '0.64rem', color: 'var(--text-muted)',
+                      }}
+                    >
+                      <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--accent)' }} />
+                      1:42 / 3:18
+                    </div>
+                  </div>
+
+                  {/* Transcript lines */}
+                  <div style={{ flex: 1, overflow: 'hidden', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {MOCK_LINES.map((line, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <div
+                          style={{
+                            width: 24, height: 24, borderRadius: 7, flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: `${line.color}22`, color: line.color,
+                            fontSize: '0.62rem', fontWeight: 700,
+                            border: `1px solid ${line.color}33`,
+                          }}
+                        >
+                          {line.speaker}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 1 }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text)' }}>
+                              Speaker {line.speaker}
+                            </span>
+                            <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)' }}>
+                              {line.time}
+                            </span>
+                          </div>
+                          <p style={{ margin: 0, fontSize: '0.76rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
+                            {line.text}
+                          </p>
+                          <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <div style={{ width: 72, height: 3, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
+                              <div
+                                style={{
+                                  width: `${line.sentiment * 100}%`, height: '100%', borderRadius: 2,
+                                  background: line.sentiment > 0.6
+                                    ? '#28c840'
+                                    : line.sentiment > 0.4
+                                      ? '#ffbd2e'
+                                      : '#ff5f57',
+                                }}
+                              />
+                            </div>
+                            <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)' }}>
+                              {Math.round(line.sentiment * 100)}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Status bar */}
+                  <div
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '6px 14px',
+                      borderTop: '1px solid var(--border)',
+                      background: 'var(--surface)',
+                      fontSize: '0.58rem', color: 'var(--text-muted)',
+                    }}
+                  >
+                    <span>3 speakers · 4 min 12 sec</span>
+                    <span>ONNX Runtime · CPU</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* ── Three pillars — below the two-column row ── */}
+        <div className="relative mt-14 flex flex-wrap justify-center gap-4" style={{ maxWidth: 700, margin: '3.5rem auto 0', width: '100%' }}>
           {PILLARS.map(({ icon: Icon, label, body }) => (
             <div
               key={label}
@@ -212,209 +410,6 @@ export function Landing() {
           transition={{ repeat: Infinity, duration: 1.9, ease: 'easeInOut' }}
         >
           <ChevronDown size={20} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
-        </motion.div>
-      </section>
-
-      {/* ══ PRODUCT DISPLAY ═══════════════════════════════════════════════════ */}
-      <section style={{ padding: '0 24px 96px', marginTop: -40, position: 'relative', zIndex: 1 }}>
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          style={{ maxWidth: 960, margin: '0 auto' }}
-        >
-          {/* Browser chrome frame */}
-          <div
-            style={{
-              borderRadius: 16,
-              border: '1px solid var(--border)',
-              overflow: 'hidden',
-              boxShadow:
-                '0 4px 24px rgba(0,0,0,0.12), 0 0 0 1px var(--border)',
-              background: 'var(--bg)',
-            }}
-          >
-            {/* Title bar */}
-            <div
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '12px 16px',
-                background: 'var(--surface)',
-                borderBottom: '1px solid var(--border)',
-              }}
-            >
-              {/* Traffic lights */}
-              <div style={{ display: 'flex', gap: 6, marginRight: 8 }}>
-                <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#ff5f57' }} />
-                <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#ffbd2e' }} />
-                <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#28c840' }} />
-              </div>
-              {/* URL bar */}
-              <div
-                style={{
-                  flex: 1, display: 'flex', alignItems: 'center',
-                  background: 'var(--bg)', borderRadius: 8,
-                  padding: '5px 12px', fontSize: '0.72rem',
-                  color: 'var(--text-muted)', border: '1px solid var(--border)',
-                  fontFamily: 'monospace',
-                }}
-              >
-                <span style={{ color: 'var(--accent)', marginRight: 6 }}>🔒</span>
-                localhost:5173/playground
-              </div>
-            </div>
-
-            {/* Content — mock playground */}
-            <div style={{ display: 'flex', height: 380, overflow: 'hidden' }}>
-              {/* Sidebar */}
-              <div
-                style={{
-                  width: 56, flexShrink: 0,
-                  background: 'var(--surface)',
-                  borderRight: '1px solid var(--border)',
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', padding: '16px 0', gap: 18,
-                }}
-              >
-                {[Mic, BarChart2, FileText, Volume2, Terminal].map((Icon, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: 36, height: 36, borderRadius: 10,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: i === 0 ? 'var(--accent)' : 'transparent',
-                      color: i === 0 ? '#1a1210' : 'var(--text-muted)',
-                    }}
-                  >
-                    <Icon size={16} />
-                  </div>
-                ))}
-              </div>
-
-              {/* Main panel */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                {/* Toolbar */}
-                <div
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '10px 16px',
-                    borderBottom: '1px solid var(--border)',
-                    background: 'var(--surface)',
-                  }}
-                >
-                  <div style={{ flex: 1, display: 'flex', gap: 4 }}>
-                    {['Transcript', 'Sentiment', 'Summary'].map((tab, i) => (
-                      <div
-                        key={tab}
-                        style={{
-                          padding: '4px 12px', borderRadius: 8, fontSize: '0.72rem', fontWeight: 600,
-                          background: i === 0 ? 'var(--accent)' : 'transparent',
-                          color: i === 0 ? '#1a1210' : 'var(--text-muted)',
-                        }}
-                      >
-                        {tab}
-                      </div>
-                    ))}
-                  </div>
-                  {/* Mini player */}
-                  <div
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '4px 10px', borderRadius: 8,
-                      background: 'var(--bg)', border: '1px solid var(--border)',
-                      fontSize: '0.68rem', color: 'var(--text-muted)',
-                    }}
-                  >
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />
-                    1:42 / 3:18
-                  </div>
-                </div>
-
-                {/* Transcript lines */}
-                <div style={{ flex: 1, overflow: 'hidden', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {MOCK_LINES.map((line, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, x: -10 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: i * 0.08, duration: 0.35 }}
-                      style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}
-                    >
-                      {/* Speaker chip */}
-                      <div
-                        style={{
-                          width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: `${line.color}22`, color: line.color,
-                          fontSize: '0.68rem', fontWeight: 700,
-                          border: `1px solid ${line.color}33`,
-                        }}
-                      >
-                        {line.speaker}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2 }}>
-                          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text)' }}>
-                            Speaker {line.speaker}
-                          </span>
-                          <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>
-                            {line.time}
-                          </span>
-                        </div>
-                        <p style={{ margin: 0, fontSize: '0.82rem', lineHeight: 1.55, color: 'var(--text-muted)' }}>
-                          {line.text}
-                        </p>
-                        {/* Sentiment bar */}
-                        <div style={{ marginTop: 5, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div style={{ width: 80, height: 4, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
-                            <div
-                              style={{
-                                width: `${line.sentiment * 100}%`, height: '100%', borderRadius: 2,
-                                background: line.sentiment > 0.6
-                                  ? '#28c840'
-                                  : line.sentiment > 0.4
-                                    ? '#ffbd2e'
-                                    : '#ff5f57',
-                              }}
-                            />
-                          </div>
-                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)' }}>
-                            {Math.round(line.sentiment * 100)}%
-                          </span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-
-                {/* Bottom status bar */}
-                <div
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '7px 16px',
-                    borderTop: '1px solid var(--border)',
-                    background: 'var(--surface)',
-                    fontSize: '0.62rem', color: 'var(--text-muted)',
-                  }}
-                >
-                  <span>3 speakers · 4 min 12 sec</span>
-                  <span>ONNX Runtime · CPU</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Caption below the frame */}
-          <p
-            style={{
-              textAlign: 'center', marginTop: '1.25rem',
-              fontSize: '0.82rem', color: 'var(--text-muted)',
-            }}
-          >
-            Transcript, speaker diarisation, and sentiment — side by side, in real time.
-          </p>
         </motion.div>
       </section>
 

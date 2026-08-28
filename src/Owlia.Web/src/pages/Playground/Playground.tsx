@@ -97,8 +97,8 @@ export function Playground() {
     if (!store.mediaFile || !isReady('transcribe')) return
     store.setStage('audio', 0)
     try {
-      const fp: string = (store.mediaFile as any).path ?? store.mediaFile.name
-      const { sessionId } = await mediaApi.analyze(fp)
+      const { filePath } = await mediaApi.upload(store.mediaFile)
+      const { sessionId } = await mediaApi.analyze(filePath)
       store.setSessionId(sessionId)
       const hub = await joinSession(sessionId)
       hub.off('AnalysisProgress'); hub.off('TranscriptSegment')

@@ -7,7 +7,7 @@ import { Nav } from '../../components/Nav/Nav'
 import { ProgressBar } from '../../components/UI/ProgressBar'
 import {
   Terminal, CheckCircle, Copy, Check, Cpu,
-  DownloadIcon, Mic, Users, BarChart2, FileText, Volume2, Activity, AlertCircle, Loader2, Pause, X, RefreshCw,
+  DownloadIcon, Mic, Users, BarChart2, FileText, Volume2, Activity, AlertCircle, Pause, X, RefreshCw,
 } from '../../components/Icons/icons'
 
 const CLIS = [
@@ -258,15 +258,27 @@ export default function DownloadPage() {
                       <CheckCircle size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                     ) : isDownloading ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                        <Loader2 size={16} className="animate-spin" style={{ color: 'var(--accent)' }} />
-                        <button
-                          type="button"
-                          title="Pause"
-                          onClick={() => pauseDownload(model.id)}
-                          style={{ display: 'flex', padding: 5, borderRadius: 999, background: 'var(--surface-2)', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text)' }}
+                        <div
+                          title={`${Math.round(state.percent)}%`}
+                          style={{
+                            width: 26, height: 26, borderRadius: 999, padding: 2, flexShrink: 0,
+                            background: `conic-gradient(var(--accent) ${state.percent * 3.6}deg, var(--surface-2) 0deg)`,
+                            transition: 'background 0.3s',
+                          }}
                         >
-                          <Pause size={12} />
-                        </button>
+                          <button
+                            type="button"
+                            title="Pause"
+                            onClick={() => pauseDownload(model.id)}
+                            style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              width: '100%', height: '100%', borderRadius: 999,
+                              background: 'var(--surface)', border: 'none', cursor: 'pointer', color: 'var(--text)',
+                            }}
+                          >
+                            <Pause size={11} />
+                          </button>
+                        </div>
                         <button
                           type="button"
                           title="Cancel"

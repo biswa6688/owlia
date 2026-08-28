@@ -102,6 +102,20 @@ export const updatesApi = {
 }
 
 export const mediaApi = {
+  // Browsers never expose a real filesystem path for a File object (neither
+  // from a file input nor drag-and-drop) — upload the bytes and get back the
+  // server-side path that /api/media/analyze can actually read.
+  upload: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    // The shared `api` instance defaults to Content-Type: application/json,
+    // which persists even for a FormData body and prevents the browser from
+    // negotiating the correct multipart boundary itself. Clearing it here
+    // lets the browser set "multipart/form-data; boundary=..." correctly.
+    return api.post<{ filePath: string }>('/api/media/upload', form, {
+      headers: { 'Content-Type': undefined },
+    }).then(r => r.data)
+  },
   analyze: (filePath: string) =>
     api.post<{ sessionId: string }>('/api/media/analyze', { filePath }).then(r => r.data),
 }

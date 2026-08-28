@@ -39,6 +39,11 @@ public static class Program
             opts.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
         });
 
+        builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(opts =>
+        {
+            opts.MultipartBodyLengthLimit = long.MaxValue;
+        });
+
         // Port is configurable via appsettings.json ("Owlia:Port"), the
         // Owlia__Port environment variable, or a command-line arg
         // (--Owlia:Port=xxxx). 0 means "let the OS pick a free port" — Photino
@@ -46,6 +51,11 @@ public static class Program
         // Default (5174) also matches the Vite dev-server proxy target.
         var port = builder.Configuration.GetValue("Owlia:Port", 5174);
         builder.WebHost.UseUrls($"http://127.0.0.1:{port}");
+
+        // Media uploads (audio/video, can be large) — this is a loopback-only,
+        // single-user desktop app, so disabling the request body size limit is
+        // safe. Default is 30MB, far too small for video files.
+        builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = null);
 
         builder.Services.AddDbContext<OwliaDbContext>(options =>
             options.UseSqlite($"Data Source={dbPath}"));

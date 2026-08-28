@@ -7,6 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — Semantic Ve
 
 ## [Unreleased]
 
+### Fixed — Session 10 (media upload was completely broken)
+
+- **Critical**: `POST /api/media/analyze` always 400'd with "File not found" for any real user-selected file. Root cause: the frontend read `mediaFile.path`, an Electron-only `File` property that doesn't exist in a browser/WebView2 — it silently fell back to `mediaFile.name` (bare filename, no directory), which is never a valid path on disk. This affected every path to Playground analysis (file picker and drag-and-drop alike) — the app could never actually analyze anything a user provided. Fixed by adding a real upload step: new `POST /api/media/upload` (multipart/form-data) saves the file's bytes server-side and returns the real path, which the frontend now passes to `/api/media/analyze` instead of the nonexistent client path. Kestrel's default 30MB request body limit and ASP.NET's form multipart limit were both raised (disabled) to allow large video files — safe here since this is a loopback-only, single-user desktop app.
+- **Critical, round 2**: the upload fix above still 400'd in real use — `{"error":"Expected multipart/form-data"}` — because the shared axios instance's default `Content-Type: application/json` header persists over a `FormData` body and blocks the browser from setting its own multipart boundary. `curl -F` had "verified" the endpoint worked because curl doesn't have this header-persistence behavior, masking the real bug. Fixed with `headers: { 'Content-Type': undefined }` on the upload call specifically. Reproduced and confirmed fixed in a real Edge browser using the actual `axios.create()` config from the app (not curl, not Node) — the broken version reproduced the exact reported error, the fixed version succeeded.
+
+### Changed — Session 10 (Download page: circular progress ring)
+
+- The separate spinning "loading" icon next to an in-progress model download is gone — the Pause button itself now shows progress as a `conic-gradient` ring around its border (fills clockwise 0-100%), removing a redundant indicator instead of adding a second one next to it.
+
 ### Changed — Session 9 (Summarization → LLamaSharp)
 
 - Summarization now runs on a small local instruct LLM (Qwen2.5-1.5B-Instruct, GGUF) via LLamaSharp/llama.cpp instead of hand-rolled BART ONNX. The previous `SummaryRunner` tokenizer was a placeholder char-mapping hack, not real BPE — this replaces it entirely. Summary, keywords, and takeaways are all produced by a single prompted inference call in a fixed labeled-section format (`SUMMARY:`/`KEYWORDS:`/`TAKEAWAYS:`), parsed with simple string splitting. Model id renamed `bart-cnn` → `summary-llm` throughout (manifest, `TranscriptService`, frontend `modelStore`/`Download` page).

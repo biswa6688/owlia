@@ -210,6 +210,15 @@ Status: `[ ]` todo · `[~]` in-progress · `[x]` done · `[!]` blocked
 | BL-163 | `[x]` Cancel a download | `POST /api/models/cancel` — deletes the `.tmp` file(s), resets status |
 | BL-164 | `[x]` Multi-file resume at the file level | `DownloadAsync` skips files whose final path already exists — a completed encoder doesn't re-download when resuming a paused decoder |
 | BL-165 | `[x]` Update-check setting (CLI + models) | `GET /api/updates/check` — npm registry `latest` dist-tag for CLIs, remote `Content-Length` vs. recorded size for models. Opt-in toggle (`useSettingsStore`, localStorage, default off), manual "Check now" button. **Never auto-downloads or auto-installs** — purely informational badges |
+| BL-166 | `[x]` Circular progress ring on Pause button | Replaces the separate spinning loader icon — `conic-gradient` ring on the button border shows percent directly |
+
+---
+
+## Epic 18 — Critical Fix: Media Upload (2026-08-28)
+
+| ID | Task | Notes |
+|---|---|---|
+| BL-170 | `[x]` Fix `/api/media/analyze` always returning "File not found" | Root cause: frontend read `File.path`, an Electron-only property — doesn't exist in WebView2/browsers, silently fell back to bare filename. **This broke Playground analysis entirely, for every input method.** Fixed with a real upload step: `POST /api/media/upload` (multipart) saves bytes server-side, returns the real path. Kestrel body-size limit and multipart form limit both raised (loopback-only, single-user — safe). Round 1 fix missed a second bug — the shared axios instance's default `Content-Type: application/json` persists over `FormData` and blocks the browser's multipart boundary negotiation; needs `headers: {'Content-Type': undefined}` on the upload call. Both bugs reproduced and fixed verified in a real Edge browser (not curl, which doesn't exhibit the header bug) |
 
 ---
 

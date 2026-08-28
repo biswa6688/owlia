@@ -25,9 +25,8 @@
   --accent-strong:#feb903;
   --accent-copper:#d0805f;
 
-  /* Stripe pattern — diagonal lines at 45° using the brand colour */
-  --stripe-color: rgba(110,79,68,0.06);
-  --stripe-bg:    var(--bg);
+  /* Square grid pattern */
+  --grid-line:  rgba(110,79,68,0.10);
 
   color-scheme: light;
 }
@@ -45,8 +44,7 @@
     --accent-strong:#feb903;
     --accent-copper:#d0805f;
 
-    --stripe-color: rgba(242,163,91,0.04);
-    --stripe-bg:    var(--bg);
+    --grid-line:  rgba(242,163,91,0.07);
 
     color-scheme: dark;
   }
@@ -64,35 +62,48 @@
   --accent-strong:#feb903;
   --accent-copper:#d0805f;
 
-  --stripe-color: rgba(242,163,91,0.04);
-  --stripe-bg:    var(--bg);
+  --grid-line:  rgba(242,163,91,0.07);
 
   color-scheme: dark;
 }
 
-/* ── Stripe texture utility ───────────────────────────────────────────────── */
-/* Apply class="bg-stripe" to any section that needs the diagonal-line texture */
-.bg-stripe {
-  background-color: var(--stripe-bg);
-  background-image: repeating-linear-gradient(
-    135deg,
-    var(--stripe-color) 0px,
-    var(--stripe-color) 1px,
-    transparent 1px,
-    transparent 18px
-  );
+/* ── Square grid / graph-paper texture ───────────────────────────────────── */
+/*
+   Two overlapping 1 px lines form a square-cell grid.
+   Cell size: 32 px.  Light mode uses warm-mahogany dots; dark uses amber.
+   Apply  class="bg-grid"  to any section.
+*/
+.bg-grid {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
-/* Denser stripe for hero sections */
+/* Tighter grid (24 px cells) for hero emphasis */
+.bg-grid-dense {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Aliases — keep any leftover .bg-stripe usages working */
+.bg-stripe {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
 .bg-stripe-dense {
-  background-color: var(--stripe-bg);
-  background-image: repeating-linear-gradient(
-    135deg,
-    var(--stripe-color) 0px,
-    var(--stripe-color) 1px,
-    transparent 1px,
-    transparent 10px
-  );
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 /* ── Reset ────────────────────────────────────────────────────────────────── */

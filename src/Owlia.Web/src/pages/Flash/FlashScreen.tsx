@@ -3,8 +3,16 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
 const FLASH_MS = 5000
-const BRAND = 'OWLIA'
-const TAGLINE = 'Offline Voice & Language Intelligence Analytics'
+const BRAND    = 'OWLIA'
+const TAGLINE  = 'Offline Voice & Language Intelligence Analytics'
+
+// Dark grid colours (hardcoded — Flash is always dark)
+const BG        = '#0f0b09'
+const GRID_LINE = 'rgba(242,163,91,0.07)'   // amber tint on dark grid
+const AMBER     = '#f2a35b'
+const GOLD      = '#feb903'
+const TEXT      = '#f0d8bc'
+const MUTED     = '#b07040'
 
 export function FlashScreen() {
   const navigate = useNavigate()
@@ -16,123 +24,198 @@ export function FlashScreen() {
 
   return (
     <div
-      className="bg-stripe relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden"
-      style={{ background: '#1a1210' }}
+      style={{
+        position: 'relative',
+        width: '100vw', height: '100vh',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        overflow: 'hidden',
+        // Square grid background — 28 px cells, dark amber lines
+        backgroundColor: BG,
+        backgroundImage: `
+          linear-gradient(${GRID_LINE} 1px, transparent 1px),
+          linear-gradient(90deg, ${GRID_LINE} 1px, transparent 1px)
+        `,
+        backgroundSize: '28px 28px',
+      }}
     >
-      {/* ── Deep vignette — keeps centre dark and dramatic ── */}
+
+      {/* ── Radial vignette — fades grid to solid dark at edges ── */}
       <div
-        className="pointer-events-none absolute inset-0"
         style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
           background:
-            'radial-gradient(ellipse 70% 70% at 50% 50%, transparent 20%, #1a1210 80%)',
+            'radial-gradient(ellipse 65% 65% at 50% 50%, transparent 10%, rgba(15,11,9,0.92) 78%)',
         }}
       />
 
-      {/* ── Warm amber bloom behind the icon ── */}
+      {/* ── Faint wide glow behind the whole centrepiece (not the icon) ── */}
       <motion.div
-        className="pointer-events-none absolute"
         style={{
-          width: 320, height: 320,
-          borderRadius: '50%',
-          background:
-            'radial-gradient(circle, rgba(254,185,3,0.18) 0%, rgba(242,163,91,0.10) 40%, transparent 70%)',
-          filter: 'blur(32px)',
+          position: 'absolute', pointerEvents: 'none',
+          width: 440, height: 440, borderRadius: '50%',
+          background: `radial-gradient(circle, rgba(254,185,3,0.09) 0%, transparent 65%)`,
         }}
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
+      {/* ── Icon assembly ── */}
+      <motion.div
+        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         initial={{ scale: 0.6, opacity: 0 }}
-        animate={{ scale: [1, 1.12, 1], opacity: [0.6, 1, 0.6] }}
-        transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
-      />
-
-      {/* ── Icon container: subtle circle background + ring ── */}
-      <motion.div
-        className="relative flex items-center justify-center"
-        initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.7, ease: [0.34, 1.56, 0.64, 1] }}
+        transition={{ duration: 0.65, ease: [0.34, 1.56, 0.64, 1] }}
       >
-        {/* Outer glow ring — pulsing */}
+
+        {/* Outer ring — thin dashed amber circle, slow rotation */}
         <motion.div
-          className="absolute rounded-full"
           style={{
-            width: 160, height: 160,
-            background: 'transparent',
-            border: '1.5px solid rgba(254,185,3,0.35)',
+            position: 'absolute',
+            width: 168, height: 168, borderRadius: '50%',
+            border: '1px dashed rgba(242,163,91,0.30)',
           }}
-          animate={{ scale: [1, 1.18, 1], opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 24, repeat: Infinity, ease: 'linear' }}
         />
 
-        {/* Icon background disc — warm surface so the coloured SVG reads clearly */}
-        <div
-          className="relative flex items-center justify-center rounded-full"
+        {/* Middle ring — solid, pulsing opacity */}
+        <motion.div
           style={{
-            width: 120, height: 120,
-            background:
-              'radial-gradient(circle at 40% 35%, #3a2a1e 0%, #241810 100%)',
-            border: '1.5px solid rgba(242,163,91,0.25)',
-            boxShadow:
-              '0 0 0 8px rgba(242,163,91,0.06), 0 0 32px rgba(254,185,3,0.12)',
+            position: 'absolute',
+            width: 136, height: 136, borderRadius: '50%',
+            border: `1px solid rgba(242,163,91,0.18)`,
+          }}
+          animate={{ opacity: [0.4, 1, 0.4], scale: [1, 1.04, 1] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+        />
+
+        {/* Icon disc — flat dark square with rounded corners, amber border */}
+        <div
+          style={{
+            position: 'relative',
+            width: 108, height: 108,
+            borderRadius: 22,                           // rounded square — not circle
+            background: '#1c1208',                      // very dark warm brown
+            border: `1.5px solid rgba(242,163,91,0.28)`,
+            boxShadow: `
+              0 0 0 6px rgba(242,163,91,0.05),
+              inset 0 1px 0 rgba(255,255,255,0.04)
+            `,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
+          {/* Inner grid pattern inside the disc — same grid as background but slightly brighter */}
+          <div
+            style={{
+              position: 'absolute', inset: 0, borderRadius: 20, overflow: 'hidden',
+              backgroundImage: `
+                linear-gradient(rgba(242,163,91,0.10) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(242,163,91,0.10) 1px, transparent 1px)
+              `,
+              backgroundSize: '18px 18px',
+            }}
+          />
+          {/* Owl SVG */}
           <img
             src="/owlia.svg"
-            alt="OWLIA owl"
-            style={{ width: 72, height: 72, filter: 'drop-shadow(0 2px 8px rgba(254,185,3,0.30))' }}
+            alt="OWLIA"
+            style={{
+              position: 'relative',
+              width: 64, height: 64,
+              // No drop-shadow — let the icon sit clean on the grid disc
+            }}
           />
         </div>
+
+        {/* Four corner tick-marks at 0°/90°/180°/270° — geometric accent */}
+        {[0, 90, 180, 270].map(deg => (
+          <div
+            key={deg}
+            style={{
+              position: 'absolute',
+              width: 10, height: 10,
+              top: '50%', left: '50%',
+              transform: `rotate(${deg}deg) translateY(-86px) translateX(-50%)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <div style={{ width: 6, height: 1.5, background: AMBER, borderRadius: 1, opacity: 0.7 }} />
+          </div>
+        ))}
+
       </motion.div>
 
-      {/* ── Brand name — letter by letter reveal ── */}
-      <div className="mt-9 flex items-baseline gap-[2px]">
+      {/* ── Brand name — letter by letter ── */}
+      <div style={{ marginTop: 36, display: 'flex', alignItems: 'baseline', gap: 1 }}>
         {BRAND.split('').map((ch, i) => (
           <motion.span
             key={i}
             style={{
-              color: '#f5dbb8',
+              color: TEXT,
               fontWeight: 700,
-              fontSize: '2.5rem',
-              letterSpacing: '0.25em',
+              fontSize: '2.25rem',
+              letterSpacing: '0.28em',
               lineHeight: 1,
+              fontVariantNumeric: 'tabular-nums',
             }}
-            initial={{ opacity: 0, y: 16, filter: 'blur(6px)' }}
+            initial={{ opacity: 0, y: 14, filter: 'blur(4px)' }}
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-            transition={{ duration: 0.45, delay: 0.75 + i * 0.11, ease: 'easeOut' }}
+            transition={{ duration: 0.4, delay: 0.6 + i * 0.10, ease: 'easeOut' }}
           >
             {ch}
           </motion.span>
         ))}
       </div>
 
-      {/* ── Amber accent line under brand ── */}
+      {/* ── Amber rule under brand ── */}
       <motion.div
-        style={{ height: 2, background: 'linear-gradient(90deg, transparent, #f2a35b, transparent)', borderRadius: 1 }}
+        style={{
+          height: 1,
+          background: `linear-gradient(90deg, transparent, ${AMBER}, transparent)`,
+          borderRadius: 1,
+          marginTop: 10,
+        }}
         initial={{ width: 0, opacity: 0 }}
-        animate={{ width: 140, opacity: 1 }}
-        transition={{ duration: 0.6, delay: 1.6, ease: 'easeOut' }}
+        animate={{ width: 120, opacity: 1 }}
+        transition={{ duration: 0.5, delay: 1.5, ease: 'easeOut' }}
       />
 
       {/* ── Tagline ── */}
       <motion.p
-        style={{ color: '#d0805f', fontSize: '0.72rem', letterSpacing: '0.06em', marginTop: '0.75rem' }}
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 1.95, ease: 'easeOut' }}
+        style={{
+          color: MUTED,
+          fontSize: '0.70rem',
+          letterSpacing: '0.08em',
+          marginTop: 10,
+          textTransform: 'uppercase',
+        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.8, delay: 1.9 }}
       >
         {TAGLINE}
       </motion.p>
 
-      {/* ── Bottom progress bar ── */}
+      {/* ── Progress bar at bottom ── */}
       <div
-        className="absolute bottom-0 left-0 right-0"
-        style={{ height: 2, background: 'rgba(242,163,91,0.12)' }}
+        style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          height: 2, background: 'rgba(242,163,91,0.10)',
+        }}
       >
         <motion.div
-          style={{ height: '100%', background: 'linear-gradient(90deg, #f2a35b, #feb903)', originX: 0 }}
+          style={{
+            height: '100%',
+            background: `linear-gradient(90deg, ${AMBER}, ${GOLD})`,
+            transformOrigin: 'left center',
+          }}
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
           transition={{ duration: FLASH_MS / 1000, ease: 'linear' }}
         />
       </div>
+
     </div>
   )
 }

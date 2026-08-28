@@ -106,7 +106,7 @@ export function Landing() {
 
       {/* ══ HERO ══════════════════════════════════════════════════════════════ */}
       <section
-        className="bg-stripe relative overflow-hidden"
+        className="bg-grid relative overflow-hidden"
         style={{ minHeight: '92vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 24px 64px' }}
       >
         {/* Centred amber bloom */}
@@ -265,7 +265,7 @@ export function Landing() {
       </section>
 
       {/* ══ HOW IT WORKS ══════════════════════════════════════════════════════ */}
-      <section className="bg-stripe" style={{ padding: '96px 24px' }}>
+      <section className="bg-grid" style={{ padding: '96px 24px' }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <p style={{ fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.12em', color: 'var(--accent)', textTransform: 'uppercase', textAlign: 'center', marginBottom: '0.6rem' }}>
             Pipeline
@@ -402,7 +402,7 @@ export function Landing() {
 
       {/* ══ FOOTER CTA ════════════════════════════════════════════════════════ */}
       <footer
-        className="bg-stripe"
+        className="bg-grid"
         style={{ padding: '80px 24px', textAlign: 'center', borderTop: '1px solid var(--border)' }}
       >
         <div

@@ -14,7 +14,8 @@ interface Props {
 export function ModelGate({ feature, children }: Props) {
   const { models, isReady } = useModelStore()
 
-  if (models.length === 0) return <>{children}</> // not loaded yet — don't block
+  // Always allow through if models list isn't ready yet or not an array
+  if (!Array.isArray(models) || models.length === 0) return <>{children}</>
 
   if (isReady(feature)) return <>{children}</>
 

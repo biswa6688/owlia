@@ -286,8 +286,11 @@ export function Landing() {
                   }}
                 >
                   {[Mic, BarChart2, FileText, Volume2, Terminal].map((Icon, i) => (
-                    <div
+                    <motion.div
                       key={i}
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.3 + i * 0.08, duration: 0.3 }}
                       style={{
                         width: 32, height: 32, borderRadius: 9,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -296,14 +299,17 @@ export function Landing() {
                       }}
                     >
                       <Icon size={14} />
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
 
                 {/* Main panel */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                   {/* Toolbar */}
-                  <div
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2, duration: 0.4 }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 8,
                       padding: '8px 14px',
@@ -333,15 +339,28 @@ export function Landing() {
                         fontSize: '0.64rem', color: 'var(--text-muted)',
                       }}
                     >
-                      <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--accent)' }} />
+                      {/* Pulsing live dot */}
+                      <div
+                        style={{
+                          width: 5, height: 5, borderRadius: '50%',
+                          background: '#28c840',
+                          animation: 'pulse-dot 1.6s ease-in-out infinite',
+                        }}
+                      />
                       1:42 / 3:18
                     </div>
-                  </div>
+                  </motion.div>
 
-                  {/* Transcript lines */}
+                  {/* Transcript lines — staggered reveal */}
                   <div style={{ flex: 1, overflow: 'hidden', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {MOCK_LINES.map((line, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -14 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.6 + i * 0.35, duration: 0.45, ease: 'easeOut' }}
+                        style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}
+                      >
                         <div
                           style={{
                             width: 24, height: 24, borderRadius: 7, flexShrink: 0,
@@ -364,7 +383,18 @@ export function Landing() {
                           </div>
                           <p style={{ margin: 0, fontSize: '0.76rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
                             {line.text}
+                            {/* Blinking cursor on the last line only */}
+                            {i === MOCK_LINES.length - 1 && (
+                              <span
+                                style={{
+                                  display: 'inline-block', width: 1, height: '0.8em',
+                                  background: 'var(--accent)', marginLeft: 2, verticalAlign: 'text-bottom',
+                                  animation: 'blink-cursor 0.9s step-end infinite',
+                                }}
+                              />
+                            )}
                           </p>
+                          {/* Sentiment bar — fills from left on appear */}
                           <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
                             <div style={{ width: 72, height: 3, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
                               <div
@@ -375,6 +405,8 @@ export function Landing() {
                                     : line.sentiment > 0.4
                                       ? '#ffbd2e'
                                       : '#ff5f57',
+                                  transformOrigin: 'left center',
+                                  animation: `barFill 0.5s ease-out ${0.6 + i * 0.35 + 0.2}s both`,
                                 }}
                               />
                             </div>
@@ -383,12 +415,15 @@ export function Landing() {
                             </span>
                           </div>
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
 
                   {/* Status bar */}
-                  <div
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 2.5, duration: 0.4 }}
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       padding: '6px 14px',
@@ -399,7 +434,7 @@ export function Landing() {
                   >
                     <span>3 speakers · 4 min 12 sec</span>
                     <span>ONNX Runtime · CPU</span>
-                  </div>
+                  </motion.div>
                 </div>
               </div>
             </div>

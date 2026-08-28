@@ -27,6 +27,8 @@
 
   /* Square grid pattern */
   --grid-line:  rgba(110,79,68,0.10);
+  /* Player / embed surface — darker than --surface for media areas */
+  --player-bg:  #0f0b09;
 
   color-scheme: light;
 }
@@ -45,6 +47,7 @@
     --accent-copper:#d0805f;
 
     --grid-line:  rgba(242,163,91,0.07);
+    --player-bg:  #0a0705;
 
     color-scheme: dark;
   }
@@ -63,6 +66,7 @@
   --accent-copper:#d0805f;
 
   --grid-line:  rgba(242,163,91,0.07);
+  --player-bg:  #0a0705;
 
   color-scheme: dark;
 }
@@ -125,3 +129,24 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-copper); }
+
+/* ── Product display animations ─────────────────────────────────────────── */
+@keyframes barFill {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.7); }
+}
+
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+@keyframes slide-in-line {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}

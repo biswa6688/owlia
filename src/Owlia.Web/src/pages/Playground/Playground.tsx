@@ -261,9 +261,11 @@ export function Playground() {
             style={{
               position: 'relative', flex: '1 1 0', minHeight: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'var(--bg)', borderRadius: 12, marginTop: 16,
+              background: 'var(--player-bg)',
+              borderRadius: 12, marginTop: 16,
               overflow: 'hidden', cursor: store.mediaUrl ? 'default' : 'pointer',
               border: '1px solid var(--border)',
+              boxShadow: 'inset 0 2px 12px rgba(0,0,0,0.25)',
             }}
             onDragOver={e => { e.preventDefault(); setDragging(true) }}
             onDragLeave={() => setDragging(false)}
@@ -309,7 +311,7 @@ export function Playground() {
           </div>
 
           {/* ── Spectrum ──────────────────────────────────────────────── */}
-          <div style={{ height: 44, background: 'var(--bg)', borderTop: '1px solid var(--border)', borderRadius: '0 0 4px 4px', marginBottom: 0 }}>
+          <div style={{ height: 44, background: 'var(--player-bg)', borderTop: '1px solid var(--border)', borderRadius: '0 0 4px 4px', marginBottom: 0 }}>
             <VoiceSpectrum mediaRef={videoRef} isPlaying={playing} height={44} barColor="var(--accent)" barCount={80} />
           </div>
 

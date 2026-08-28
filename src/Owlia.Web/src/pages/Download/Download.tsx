@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Download as DownloadIcon, CheckCircle, Circle, Loader2, Terminal } from 'lucide-react'
+import { DownloadIcon, CheckCircle, Circle, Loader2, Terminal } from '../../components/Icons/icons'
 import { motion } from 'framer-motion'
 import { ThemeToggle } from '../../components/UI/ThemeToggle'
 import { modelsApi, cliApi, type ModelStatus, type CliStatus } from '../../api/client'

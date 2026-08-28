@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle } from '../Icons/icons'
 import { useModelStore, MODEL_REQUIREMENTS } from '../../store/modelStore'
 
 interface Props {

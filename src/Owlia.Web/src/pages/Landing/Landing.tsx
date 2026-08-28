@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Mic, Users, BarChart2, FileText, Volume2, Terminal,
   ChevronDown, ArrowRight, Check, Zap, Shield, Cpu,
-} from 'lucide-react'
+} from '../../components/Icons/icons'
 import { Nav } from '../../components/Nav/Nav'
 
 // ── Product mockup transcript data ──────────────────────────────────────────

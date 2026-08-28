@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trash2, Clock, Users, Calendar } from 'lucide-react'
+import { Trash2, Clock, Users, Calendar } from '../../components/Icons/icons'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Nav } from '../../components/Nav/Nav'
 import { historyApi, type Session } from '../../api/client'

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Plus, ChevronDown, Video, Activity, AudioLines,
-} from 'lucide-react'
+} from '../Icons/icons'
 import WaveSurfer from 'wavesurfer.js'
 
 interface Props {

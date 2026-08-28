@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Send, Terminal, Loader2, AlertCircle } from 'lucide-react'
+import { Send, Terminal, Loader2, AlertCircle } from '../Icons/icons'
 import type { HubConnection } from '@microsoft/signalr'
 import { cliApi, type CliStatus } from '../../api/client'
 import { joinSession } from '../../api/signalr'

@@ -3,7 +3,7 @@ import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Minimize2, Maximize2, Plus, ChevronDown, GripHorizontal,
   Square, Video, Activity, AudioLines,
-} from 'lucide-react'
+} from '../Icons/icons'
 import WaveSurfer from 'wavesurfer.js'
 
 interface Props {

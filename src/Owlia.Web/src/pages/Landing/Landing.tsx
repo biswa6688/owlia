@@ -66,9 +66,9 @@ const STEPS = [
 ]
 
 const PILLARS = [
-  { icon: Shield, label: 'Fully private', body: 'Zero data leaves your machine. No cloud, no telemetry.' },
-  { icon: Cpu, label: 'CPU-only', body: 'ONNX Runtime runs on any modern CPU. GPU optional.' },
-  { icon: Zap, label: 'Instant replay', body: 'Click any line in the transcript to jump the player to that moment.' },
+  { icon: Shield, color: '#f2a35b', stat: '0 KB', label: 'Fully private', body: 'Zero data leaves your machine. No cloud sync, no telemetry, no API keys — every model runs from your local disk.' },
+  { icon: Cpu,    color: '#feb903', stat: '7',     label: 'ONNX models',  body: 'Whisper, Silero, pyannote, WeSpeaker, RoBERTa, BART and Kokoro — all optimised for CPU via ONNX Runtime.' },
+  { icon: Zap,    color: '#d0805f', stat: '<1 s',  label: 'Instant replay', body: 'Click any transcript line to jump the player to that exact moment. Word-level timestamps make it precise.' },
 ]
 
 const FAQ = [
@@ -94,10 +94,30 @@ function Nav() {
         <img src="/owlia.svg" alt="OWLIA" style={{ width: 30, height: 30 }} />
         <span style={{ fontWeight: 700, fontSize: '1.05rem', letterSpacing: '0.03em' }}>OWLIA</span>
       </div>
-      <nav className="flex items-center gap-5 text-sm font-medium">
+      <nav className="flex items-center gap-3 text-sm font-medium">
         <Link to="/playground" className="opacity-70 transition-opacity hover:opacity-100">Playground</Link>
-        <Link to="/history"    className="opacity-70 transition-opacity hover:opacity-100">History</Link>
-        <Link to="/download"   className="opacity-70 transition-opacity hover:opacity-100">Download</Link>
+        <Link
+          to="/history"
+          className="transition-all hover:brightness-110"
+          style={{
+            padding: '5px 14px', borderRadius: 100, fontSize: '0.82rem',
+            border: '1px solid var(--border)', background: 'var(--surface)',
+            textDecoration: 'none', color: 'var(--text)',
+          }}
+        >
+          History
+        </Link>
+        <Link
+          to="/download"
+          className="transition-all hover:brightness-110"
+          style={{
+            padding: '5px 14px', borderRadius: 100, fontSize: '0.82rem', fontWeight: 600,
+            border: '1px solid var(--accent)', background: 'transparent',
+            textDecoration: 'none', color: 'var(--accent)',
+          }}
+        >
+          Download
+        </Link>
         <ThemeToggle />
       </nav>
     </header>
@@ -387,19 +407,54 @@ export function Landing() {
         </div>
 
         {/* ── Three pillars — below the two-column row ── */}
-        <div className="relative mt-14 flex flex-wrap justify-center gap-4" style={{ maxWidth: 700, margin: '3.5rem auto 0', width: '100%' }}>
-          {PILLARS.map(({ icon: Icon, label, body }) => (
-            <div
+        <div
+          className="relative"
+          style={{ maxWidth: 1140, margin: '3.5rem auto 0', width: '100%', display: 'flex', gap: '1.25rem' }}
+        >
+          {PILLARS.map(({ icon: Icon, color, stat, label, body }, i) => (
+            <motion.div
               key={label}
-              className="flex items-start gap-3 rounded-2xl px-5 py-4"
-              style={{ background: 'var(--surface)', border: '1px solid var(--border)', flex: '1 1 170px', minWidth: 160 }}
+              initial={{ opacity: 0, y: 18 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1, duration: 0.45 }}
+              whileHover={{ y: -4, boxShadow: `0 8px 24px ${color}18` }}
+              style={{
+                flex: '1 1 0',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 18,
+                padding: '1.75rem 1.5rem',
+                display: 'flex', flexDirection: 'column', gap: '0.75rem',
+                transition: 'box-shadow 0.2s, transform 0.2s',
+                cursor: 'default',
+              }}
             >
-              <Icon size={17} style={{ color: 'var(--accent)', marginTop: 2, flexShrink: 0 }} />
-              <div>
-                <p style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: 2 }}>{label}</p>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>{body}</p>
+              {/* Icon + stat row */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div
+                  style={{
+                    width: 48, height: 48, borderRadius: 14,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: `${color}15`, border: `1px solid ${color}28`,
+                  }}
+                >
+                  <Icon size={22} style={{ color }} />
+                </div>
+                <span
+                  style={{
+                    fontSize: '1.5rem', fontWeight: 800, lineHeight: 1,
+                    color, fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {stat}
+                </span>
               </div>
-            </div>
+              {/* Label */}
+              <p style={{ fontWeight: 700, fontSize: '1rem', margin: 0 }}>{label}</p>
+              {/* Body */}
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>{body}</p>
+            </motion.div>
           ))}
         </div>
 

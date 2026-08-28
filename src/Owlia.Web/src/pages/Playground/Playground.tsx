@@ -19,35 +19,11 @@ import type { SpeakerSegment, SentimentResult, SummaryResult } from '../../api/c
 
 type Tab = 'transcript' | 'sentiment' | 'summary' | 'cli'
 
-// Dark palette for the Playground (always dark regardless of global theme)
-const P = {
-  bg:       '#0f0b09',
-  surface:  '#1e1510',
-  panel:    '#261a14',
-  bar:      '#2a1f1b',
-  border:   'rgba(242,163,91,0.13)',
-  text:     '#f0d8bc',
-  muted:    '#c07850',
-  accent:   '#f2a35b',
-  gold:     '#feb903',
-} as const
-
 function fmtTime(sec: number) {
   const m = Math.floor(sec / 60)
   const s = Math.floor(sec % 60)
   return `${m}:${s.toString().padStart(2, '0')}`
 }
-
-// Inject dark CSS vars into a style attribute for child components
-const DARK_VARS: React.CSSProperties = {
-  '--text':     P.text,
-  '--text-muted': P.muted,
-  '--surface':  P.panel,
-  '--surface-2':'#3a2c26',
-  '--border':   P.border,
-  '--accent':   P.accent,
-  '--bg':       P.surface,
-} as React.CSSProperties
 
 export function Playground() {
   const store = usePlaygroundStore()
@@ -212,23 +188,23 @@ export function Playground() {
       ref={containerRef}
       style={{
         height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
-        background: P.bg, color: P.text, overflow: 'hidden',
+        background: 'var(--bg)', color: 'var(--text)', overflow: 'hidden',
       }}
     >
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
-      <div style={{ background: P.bar, borderBottom: `1px solid ${P.border}`, flexShrink: 0 }}>
+      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <div style={{
           maxWidth: 1400, margin: '0 auto', padding: '0 24px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 44,
         }}>
-          <Link to="/landing" style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: 0.75, textDecoration: 'none', color: P.text }}>
+          <Link to="/landing" style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: 0.75, textDecoration: 'none', color: 'var(--text)' }}>
             <img src="/owlia.svg" alt="OWLIA" style={{ width: 22, height: 22 }} />
             <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>OWLIA</span>
           </Link>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: '0.72rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.72rem' }}>
             {isAnalysing && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: P.muted }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
                 <Loader2 size={11} className="animate-spin" />
                 {STAGE_LABEL[store.stage]} {store.progress}%
               </span>
@@ -238,8 +214,36 @@ export function Playground() {
                 <AlertCircle size={11} /> {store.error}
               </span>
             )}
-            <Link to="/history"  style={{ opacity: 0.55, textDecoration: 'none', color: P.text }}>History</Link>
-            <Link to="/download" style={{ opacity: 0.55, textDecoration: 'none', color: P.text }}>Download</Link>
+            <Link
+              to="/history"
+              style={{
+                textDecoration: 'none', fontSize: '0.72rem', fontWeight: 600,
+                color: 'var(--text)', opacity: 0.75,
+                padding: '4px 12px', borderRadius: 100,
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
+                transition: 'opacity 0.15s, background 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'var(--surface-2)' }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = '0.75'; e.currentTarget.style.background = 'var(--surface)' }}
+            >
+              History
+            </Link>
+            <Link
+              to="/download"
+              style={{
+                textDecoration: 'none', fontSize: '0.72rem', fontWeight: 600,
+                color: 'var(--accent)',
+                padding: '4px 12px', borderRadius: 100,
+                border: '1px solid var(--accent)',
+                background: 'transparent',
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#1a1210' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--accent)' }}
+            >
+              Download
+            </Link>
           </div>
         </div>
       </div>
@@ -257,8 +261,9 @@ export function Playground() {
             style={{
               position: 'relative', flex: '1 1 0', minHeight: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: '#080604', borderRadius: 12, marginTop: 16,
+              background: 'var(--bg)', borderRadius: 12, marginTop: 16,
               overflow: 'hidden', cursor: store.mediaUrl ? 'default' : 'pointer',
+              border: '1px solid var(--border)',
             }}
             onDragOver={e => { e.preventDefault(); setDragging(true) }}
             onDragLeave={() => setDragging(false)}
@@ -269,10 +274,10 @@ export function Playground() {
               <div style={{
                 position: 'absolute', inset: 0, zIndex: 50,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: `2px dashed ${P.accent}`, borderRadius: 12,
-                background: 'rgba(242,163,91,0.06)',
+                border: '2px dashed var(--accent)', borderRadius: 12,
+                background: 'color-mix(in srgb, var(--accent) 6%, transparent)',
               }}>
-                <p style={{ color: P.accent, fontWeight: 600, fontSize: '1rem' }}>Drop media file</p>
+                <p style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '1rem' }}>Drop media file</p>
               </div>
             )}
 
@@ -296,7 +301,7 @@ export function Playground() {
                 position: 'absolute', bottom: 48, left: '50%', transform: 'translateX(-50%)',
                 maxWidth: '75%', background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(8px)',
                 borderRadius: 10, padding: '6px 16px', fontSize: '0.9rem',
-                fontWeight: 500, color: '#f5dbb8', textAlign: 'center', pointerEvents: 'none',
+                fontWeight: 500, color: 'var(--text)', textAlign: 'center', pointerEvents: 'none',
               }}>
                 {subtitle}
               </div>
@@ -304,26 +309,26 @@ export function Playground() {
           </div>
 
           {/* ── Spectrum ──────────────────────────────────────────────── */}
-          <div style={{ height: 44, background: '#080604', borderTop: `1px solid ${P.border}`, borderRadius: '0 0 4px 4px', marginBottom: 0 }}>
-            <VoiceSpectrum mediaRef={videoRef} isPlaying={playing} height={44} barColor={P.accent} barCount={80} />
+          <div style={{ height: 44, background: 'var(--bg)', borderTop: '1px solid var(--border)', borderRadius: '0 0 4px 4px', marginBottom: 0 }}>
+            <VoiceSpectrum mediaRef={videoRef} isPlaying={playing} height={44} barColor="var(--accent)" barCount={80} />
           </div>
 
           {/* ── Controls ──────────────────────────────────────────────── */}
-          <div style={{ background: P.bar, borderRadius: 10, padding: '8px 16px', marginTop: 8, flexShrink: 0 }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '8px 16px', marginTop: 8, flexShrink: 0 }}>
             {/* Seek bar */}
             <input
               type="range" min={0} max={durationSec || 100} step={0.1} value={currentSec}
-              style={{ width: '100%', accentColor: P.accent, height: 3, marginBottom: 8, display: 'block', cursor: 'pointer' }}
+              style={{ width: '100%', accentColor: 'var(--accent)', height: 3, marginBottom: 8, display: 'block', cursor: 'pointer' }}
               onChange={e => { const v = +e.target.value; setCurrentSec(v); if (videoRef.current) videoRef.current.currentTime = v }}
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               {/* Transport */}
-              <button onClick={() => skip(-10)} style={iconBtn(P.text)} title="−10s"><SkipBack size={16} /></button>
+              <button onClick={() => skip(-10)} style={iconBtn()} title="−10s"><SkipBack size={16} /></button>
               <button onClick={togglePlay}
-                style={{ ...iconBtn(P.text), width: 36, height: 36, borderRadius: '50%', background: `${P.accent}22` }}>
+                style={{ ...iconBtn(), width: 36, height: 36, borderRadius: '50%', background: 'color-mix(in srgb, var(--accent) 13%, transparent)' }}>
                 {playing ? <Pause size={18} /> : <Play size={18} />}
               </button>
-              <button onClick={() => skip(10)} style={iconBtn(P.text)} title="+10s"><SkipForward size={16} /></button>
+              <button onClick={() => skip(10)} style={iconBtn()} title="+10s"><SkipForward size={16} /></button>
 
               <span style={{ fontSize: '0.72rem', fontFamily: 'monospace', opacity: 0.5, marginLeft: 4 }}>
                 {fmtTime(currentSec)} / {fmtTime(durationSec)}
@@ -331,45 +336,45 @@ export function Playground() {
 
               <select
                 value={speed} onChange={e => setSpd(+e.target.value)}
-                style={{ background: 'transparent', border: 'none', color: P.text, fontSize: '0.72rem', opacity: 0.65, cursor: 'pointer' }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '0.72rem', opacity: 0.65, cursor: 'pointer' }}
               >
                 {[0.5, 0.75, 1, 1.25, 1.5, 2, 3].map(s => (
-                  <option key={s} value={s} style={{ background: P.bar }}>{s}×</option>
+                  <option key={s} value={s} style={{ background: 'var(--surface)' }}>{s}×</option>
                 ))}
               </select>
 
               <div style={{ flex: 1 }} />
 
               {/* Volume */}
-              <button onClick={toggleMute} style={iconBtn(P.text)}>
+              <button onClick={toggleMute} style={iconBtn()}>
                 {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
               </button>
               <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
-                style={{ width: 72, accentColor: P.accent, cursor: 'pointer' }}
+                style={{ width: 72, accentColor: 'var(--accent)', cursor: 'pointer' }}
                 onChange={e => setVol(+e.target.value)} />
 
               {/* Action buttons */}
               {canAnalyse && (
                 <button onClick={analyse}
-                  style={{ background: P.accent, color: '#1a1210', border: 'none', borderRadius: 100, padding: '5px 16px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>
+                  style={{ background: 'var(--accent)', color: '#1a1210', border: 'none', borderRadius: 100, padding: '5px 16px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>
                   Analyse
                 </button>
               )}
               {needsModel && (
                 <Link to="/download"
-                  style={{ background: '#875d54', color: '#f5dbb8', borderRadius: 100, padding: '5px 14px', fontSize: '0.75rem', fontWeight: 600, textDecoration: 'none' }}
+                  style={{ background: 'var(--accent-copper)', color: 'var(--text)', borderRadius: 100, padding: '5px 14px', fontSize: '0.75rem', fontWeight: 600, textDecoration: 'none' }}
                   title="Whisper + VAD models required">
                   ⚠ Models needed
                 </Link>
               )}
 
               <button onClick={() => fileInputRef.current?.click()}
-                style={{ ...iconBtn(P.text), border: `1px solid ${P.border}`, borderRadius: 100, padding: '4px 12px', fontSize: '0.72rem', gap: 5, display: 'flex', alignItems: 'center' }}>
+                style={{ ...iconBtn(), border: '1px solid var(--border)', borderRadius: 100, padding: '4px 12px', fontSize: '0.72rem', gap: 5, display: 'flex', alignItems: 'center' }}>
                 <Plus size={12} /> Add Media
               </button>
               <input ref={fileInputRef} type="file" accept="audio/*,video/*" style={{ display: 'none' }} onChange={onInput} />
 
-              <button onClick={toggleFs} style={iconBtn(P.text)}>
+              <button onClick={toggleFs} style={iconBtn()}>
                 {fullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
               </button>
             </div>
@@ -378,7 +383,7 @@ export function Playground() {
           {/* Analysis progress */}
           {isAnalysing && (
             <div style={{ padding: '2px 0 4px' }}>
-              <ProgressBar value={store.progress} color={P.accent} className="h-[2px]" />
+              <ProgressBar value={store.progress} color="var(--accent)" className="h-[2px]" />
               <p style={{ textAlign: 'right', fontSize: '0.65rem', opacity: 0.35, marginTop: 2 }}>
                 {STAGE_LABEL[store.stage]}
               </p>
@@ -389,18 +394,18 @@ export function Playground() {
           <div style={{
             display: 'flex', flexDirection: 'column', flex: '0 0 300px',
             minHeight: 260, marginTop: 10, marginBottom: 16,
-            background: P.surface, borderRadius: 12, border: `1px solid ${P.border}`, overflow: 'hidden',
+            background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden',
           }}>
             {/* Tab bar */}
-            <div style={{ display: 'flex', borderBottom: `1px solid ${P.border}`, background: P.panel, flexShrink: 0 }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', flexShrink: 0 }}>
               {TABS.map(t => (
                 <button
                   key={t.id} type="button" onClick={() => setTab(t.id)}
                   style={{
                     padding: '10px 16px', fontSize: '0.78rem', fontWeight: 600,
                     background: 'none', border: 'none', cursor: 'pointer',
-                    color:        tab === t.id ? P.accent : P.muted,
-                    borderBottom: tab === t.id ? `2px solid ${P.accent}` : '2px solid transparent',
+                    color:        tab === t.id ? 'var(--accent)' : 'var(--text-muted)',
+                    borderBottom: tab === t.id ? '2px solid var(--accent)' : '2px solid transparent',
                     transition: 'color 0.15s',
                     whiteSpace: 'nowrap',
                   }}
@@ -410,8 +415,8 @@ export function Playground() {
               ))}
             </div>
 
-            {/* Tab content */}
-            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', ...DARK_VARS }}>
+            {/* Tab content — inherits global CSS vars */}
+            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
               {tab === 'transcript' && (
                 <ModelGate feature="transcribe">
                   <TranscriptList segments={store.segments} activeIndex={store.activeSegmentIndex} onSeek={seekToMs} />
@@ -436,10 +441,10 @@ export function Playground() {
   )
 }
 
-// Small reusable button style helper
-function iconBtn(textColor: string): React.CSSProperties {
+// Small reusable button — inherits colour from CSS variables
+function iconBtn(): React.CSSProperties {
   return {
-    background: 'none', border: 'none', color: textColor,
+    background: 'none', border: 'none', color: 'var(--text)',
     cursor: 'pointer', opacity: 0.65, display: 'flex', alignItems: 'center', justifyContent: 'center',
     padding: 4, borderRadius: 6, transition: 'opacity 0.15s',
   }

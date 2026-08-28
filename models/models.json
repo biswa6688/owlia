@@ -1,6 +1,7 @@
 [
   {
     "id": "silero-vad",
+    "displayName": "Silero VAD v5",
     "feature": "Voice Activity Detection",
     "files": [
       { "fileName": "silero_vad.onnx", "sizeBytes": 2327524, "sha256": "", "url": "https://raw.githubusercontent.com/snakers4/silero-vad/master/src/silero_vad/data/silero_vad.onnx" }
@@ -8,6 +9,7 @@
   },
   {
     "id": "whisper-large-v3",
+    "displayName": "Whisper Large v3",
     "feature": "Speech-to-Text",
     "files": [
       { "fileName": "whisper-large-v3/encoder_model.onnx", "sizeBytes": 412412, "sha256": "", "url": "https://huggingface.co/onnx-community/whisper-large-v3-ONNX/resolve/main/onnx/encoder_model.onnx" },
@@ -18,6 +20,7 @@
   },
   {
     "id": "pyannote-seg",
+    "displayName": "pyannote Speaker Segmentation 3.0",
     "feature": "Speaker Segmentation",
     "files": [
       { "fileName": "pyannote-seg-3.0.onnx", "sizeBytes": 5986908, "sha256": "", "url": "https://huggingface.co/onnx-community/pyannote-segmentation-3.0/resolve/main/onnx/model.onnx" }
@@ -25,6 +28,7 @@
   },
   {
     "id": "wespeaker-ecapa",
+    "displayName": "WeSpeaker ECAPA-TDNN",
     "feature": "Speaker Embedding",
     "files": [
       { "fileName": "wespeaker-ecapa-tdnn.onnx", "sizeBytes": 24861931, "sha256": "", "url": "https://huggingface.co/Wespeaker/wespeaker-ecapa-tdnn512-LM/resolve/main/voxceleb_ECAPA512_LM.onnx" }
@@ -32,6 +36,7 @@
   },
   {
     "id": "roberta-sentiment",
+    "displayName": "Twitter-RoBERTa Sentiment (CardiffNLP)",
     "feature": "Sentiment Analysis",
     "files": [
       { "fileName": "roberta-sentiment.onnx", "sizeBytes": 498873677, "sha256": "", "url": "https://huggingface.co/Xenova/twitter-roberta-base-sentiment-latest/resolve/main/onnx/model.onnx" }
@@ -39,6 +44,7 @@
   },
   {
     "id": "bart-cnn",
+    "displayName": "BART Large CNN (Facebook)",
     "feature": "Summarization",
     "files": [
       { "fileName": "bart-cnn/encoder_model.onnx", "sizeBytes": 814942257, "sha256": "", "url": "https://huggingface.co/Xenova/bart-large-cnn/resolve/main/onnx/encoder_model.onnx" },
@@ -47,6 +53,7 @@
   },
   {
     "id": "kokoro-tts",
+    "displayName": "Kokoro v1.0",
     "feature": "Text-to-Speech",
     "files": [
       { "fileName": "kokoro-v1.0.onnx", "sizeBytes": 325532232, "sha256": "", "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model.onnx" }

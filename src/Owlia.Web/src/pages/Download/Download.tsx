@@ -140,8 +140,8 @@ export default function DownloadPage() {
                       <Icon size={16} style={{ color: 'var(--accent)' }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontWeight: 700, fontSize: '0.85rem', lineHeight: 1.2 }}>{model.feature}</p>
-                      <p style={{ fontSize: '0.68rem', opacity: 0.45, fontFamily: 'monospace' }}>{model.id} · {formatBytes(model.sizeBytes)}</p>
+                      <p style={{ fontWeight: 700, fontSize: '0.85rem', lineHeight: 1.2 }}>{model.displayName || model.id}</p>
+                      <p style={{ fontSize: '0.68rem', opacity: 0.45 }}>{model.feature} · {formatBytes(model.sizeBytes)}</p>
                     </div>
 
                     {model.downloaded ? (

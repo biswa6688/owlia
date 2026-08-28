@@ -58,6 +58,7 @@ public sealed class ModelManager : IModelManagerService
             result.Add(new ModelStatus
             {
                 Id = entry.Id,
+                DisplayName = string.IsNullOrEmpty(entry.DisplayName) ? entry.Id : entry.DisplayName,
                 FileName = entry.Files.Count == 1 ? entry.Files[0].FileName : $"{entry.Id} ({entry.Files.Count} files)",
                 Feature = entry.Feature,
                 SizeBytes = entry.Files.Sum(f => f.SizeBytes),
@@ -175,6 +176,7 @@ public sealed class ModelManager : IModelManagerService
     private sealed class ModelManifestEntry
     {
         public string Id { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
         public string Feature { get; set; } = string.Empty;
         public List<ModelFileEntry> Files { get; set; } = new();
     }

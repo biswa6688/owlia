@@ -11,6 +11,7 @@ export const api = axios.create({
 
 export interface ModelStatus {
   id: string
+  displayName: string
   fileName: string
   feature: string
   sizeBytes: number
@@ -18,6 +19,8 @@ export interface ModelStatus {
   url: string
   downloaded: boolean
   verified: boolean
+  partialBytes: number
+  isPaused: boolean
 }
 
 export interface SpeakerSegment {

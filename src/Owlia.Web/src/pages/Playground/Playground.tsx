@@ -20,6 +20,7 @@ export function Playground() {
 
   const [midTab, setMidTab]         = useState<MidTab>('transcript')
   const [subtitle, setSubtitle]     = useState('')
+  const [expanded, setExpanded]     = useState(false)
   const [leftPct, setLeftPct]       = useState(33)
   const [midPct, setMidPct]         = useState(44)
   const containerRef                = useRef<HTMLDivElement>(null)
@@ -91,8 +92,8 @@ export function Playground() {
     store.reset(); store.setMediaFile(f); setSubtitle('')
   }
 
-  // ── Analyse ────────────────────────────────────────────────────────
-  const analyse = async () => {
+  // ── Full pipeline (Transcript + Sentiment + Summary) ───────────────
+  const runFullPipeline = async () => {
     if (!store.mediaFile || !isReady('transcribe')) return
     store.setStage('audio', 0)
     try {
@@ -124,6 +125,33 @@ export function Playground() {
     }
   }
 
+  // ── Individual process runners ──────────────────────────────────────
+  const runTranscript = runFullPipeline
+
+  const runSentiment = async () => {
+    if (!store.sessionId) return
+    store.setStage('sentiment', 0)
+    try {
+      const s = await transcriptApi.getSentiment(store.sessionId)
+      if (s) store.setSentiment(s as SentimentResult)
+      store.setStage('done', 100)
+    } catch (e: any) {
+      store.setError(e?.response?.data?.error ?? e?.message ?? 'Sentiment failed')
+    }
+  }
+
+  const runSummary = async () => {
+    if (!store.sessionId) return
+    store.setStage('summary', 0)
+    try {
+      const s = await transcriptApi.getSummary(store.sessionId)
+      if (s) store.setSummary(s as SummaryResult)
+      store.setStage('done', 100)
+    } catch (e: any) {
+      store.setError(e?.response?.data?.error ?? e?.message ?? 'Summary failed')
+    }
+  }
+
   const STAGE_LABEL: Record<string, string> = {
     idle: '', audio: 'Loading audio…', vad: 'Detecting speech…',
     asr: 'Transcribing…', diarization: 'Identifying speakers…',
@@ -132,8 +160,11 @@ export function Playground() {
   }
 
   const isAnalysing = !['idle', 'done', 'error'].includes(store.stage)
-  const canAnalyse  = !!store.mediaFile && store.stage === 'idle' && isReady('transcribe')
-  const needsModel  = !!store.mediaFile && store.stage === 'idle' && !isReady('transcribe')
+  const hasFile     = !!store.mediaFile
+  const hasSession  = !!store.sessionId
+  const canTranscribe = hasFile && store.stage === 'idle' && isReady('transcribe')
+  const canRunSentiment = hasSession && !isAnalysing && !!store.segments.length && !store.sentiment
+  const canRunSummary   = hasSession && !isAnalysing && !!store.segments.length && !store.summary
   const totalDurMs  = store.segments.length
     ? Math.max(...store.segments.map(s => s.endMs))
     : store.sentiment?.timeline?.length
@@ -162,76 +193,80 @@ export function Playground() {
     <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)', overflow: 'hidden' }}>
       <Nav />
 
-      {/* ── Three-column body ───────────────────────────────────────────── */}
       <div ref={containerRef} style={{ flex: '1 1 0', minHeight: 0, display: 'flex', overflow: 'hidden' }}>
 
         {/* ── Col 1: Player + Sentiment ─────────────────────────────────── */}
-        <div style={{ width: `${leftPct}%`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
+        <div style={{ width: expanded ? '100%' : `${leftPct}%`, display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'width 0.25s' }}>
+          <div style={{ flex: expanded ? '1 1 0' : undefined, flexShrink: expanded ? undefined : 0, minHeight: expanded ? 0 : undefined, borderBottom: expanded ? 'none' : '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
             <InlinePlayer
               mediaUrl={store.mediaUrl}
               mediaFile={store.mediaFile}
               subtitle={subtitle}
               onFileLoad={loadFile}
               onSeek={onSeek}
-              onAnalyse={canAnalyse ? analyse : undefined}
-              canAnalyse={canAnalyse}
-              needsModel={needsModel}
+              expanded={expanded}
+              onToggleExpand={() => setExpanded(v => !v)}
               isAnalysing={isAnalysing}
               stageLabel={isAnalysing ? STAGE_LABEL[store.stage] : undefined}
               progress={isAnalysing ? store.progress : undefined}
             />
           </div>
-          <div style={{ flex: '1 1 0', minHeight: 0, overflow: 'auto', padding: '12px 16px' }}>
-            <ModelGate feature="sentiment">
-              <SentimentView sentiment={store.sentiment} totalDurationMs={totalDurMs} />
-            </ModelGate>
-          </div>
+          {!expanded && (
+            <div style={{ flex: '1 1 0', minHeight: 0, overflow: 'auto', padding: '12px 16px' }}>
+              <ModelGate feature="sentiment">
+                <SentimentView sentiment={store.sentiment} totalDurationMs={totalDurMs} onGenerate={canRunSentiment ? runSentiment : undefined} isAnalysing={isAnalysing} />
+              </ModelGate>
+            </div>
+          )}
         </div>
 
-        <Divider which="left" />
+        {!expanded && <Divider which="left" />}
 
         {/* ── Col 2: Transcript / Summary tabs ──────────────────────────── */}
-        <div style={{ width: `${midPct}%`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', flexShrink: 0 }}>
-            {MID_TABS.map(t => (
-              <button
-                key={t.id} type="button" onClick={() => setMidTab(t.id)}
-                style={{
-                  padding: '8px 14px', fontSize: '0.75rem', fontWeight: 600,
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color:        midTab === t.id ? 'var(--accent)' : 'var(--text-muted)',
-                  borderBottom: midTab === t.id ? '2px solid var(--accent)' : '2px solid transparent',
-                  transition: 'color 0.15s', whiteSpace: 'nowrap',
-                }}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-            {midTab === 'transcript' && (
-              <ModelGate feature="transcribe">
-                <TranscriptList segments={store.segments} activeIndex={store.activeSegmentIndex} onSeek={ms => {
-                  store.setCurrentTimeMs(ms)
-                  setSubtitle(store.segments.find(s => ms >= s.startMs && ms <= s.endMs)?.text ?? '')
-                }} />
-              </ModelGate>
-            )}
-            {midTab === 'summary' && (
-              <ModelGate feature="summary">
-                <SummaryView summary={store.summary} />
-              </ModelGate>
-            )}
-          </div>
-        </div>
+        {!expanded && (
+          <>
+            <div style={{ width: `${midPct}%`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', flexShrink: 0 }}>
+                {MID_TABS.map(t => (
+                  <button
+                    key={t.id} type="button" onClick={() => setMidTab(t.id)}
+                    style={{
+                      padding: '8px 14px', fontSize: '0.75rem', fontWeight: 600,
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color:        midTab === t.id ? 'var(--accent)' : 'var(--text-muted)',
+                      borderBottom: midTab === t.id ? '2px solid var(--accent)' : '2px solid transparent',
+                      transition: 'color 0.15s', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                {midTab === 'transcript' && (
+                  <ModelGate feature="transcribe">
+                    <TranscriptList segments={store.segments} activeIndex={store.activeSegmentIndex} onSeek={ms => {
+                      store.setCurrentTimeMs(ms)
+                      setSubtitle(store.segments.find(s => ms >= s.startMs && ms <= s.endMs)?.text ?? '')
+                    }} onGenerate={canTranscribe ? runTranscript : undefined} isAnalysing={isAnalysing} />
+                  </ModelGate>
+                )}
+                {midTab === 'summary' && (
+                  <ModelGate feature="summary">
+                    <SummaryView summary={store.summary} onGenerate={canRunSummary ? runSummary : undefined} isAnalysing={isAnalysing} />
+                  </ModelGate>
+                )}
+              </div>
+            </div>
 
-        <Divider which="mid" />
+            <Divider which="mid" />
 
-        {/* ── Col 3: Ask AI chat ─────────────────────────────────────────── */}
-        <div style={{ width: `${rightPct}%`, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <CliPanel sessionId={store.sessionId} />
-        </div>
+            {/* ── Col 3: Ask AI chat ─────────────────────────────────────── */}
+            <div style={{ width: `${rightPct}%`, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <CliPanel sessionId={store.sessionId} />
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

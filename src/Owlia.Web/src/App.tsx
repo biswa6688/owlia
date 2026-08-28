@@ -3,7 +3,7 @@ import { FlashScreen } from './pages/Flash/FlashScreen'
 import { Landing } from './pages/Landing/Landing'
 import { Playground } from './pages/Playground/Playground'
 import { History } from './pages/History/History'
-import { Download } from './pages/Download/Download'
+import Download from './pages/Download/Download'
 
 function App() {
   return (

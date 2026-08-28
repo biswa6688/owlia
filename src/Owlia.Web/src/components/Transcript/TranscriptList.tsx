@@ -2,11 +2,14 @@ import { useEffect, useRef } from 'react'
 import type { SpeakerSegment } from '../../api/client'
 import { speakerColor } from '../../store/playgroundStore'
 import { Badge } from '../UI/Badge'
+import { AudioLines } from '../Icons/icons'
 
 interface Props {
   segments: SpeakerSegment[]
   activeIndex: number
   onSeek: (ms: number) => void
+  onGenerate?: () => void
+  isAnalysing?: boolean
 }
 
 function formatTime(ms: number) {
@@ -22,7 +25,7 @@ function sentimentEmoji(label: string) {
   return '😐'
 }
 
-export function TranscriptList({ segments, activeIndex, onSeek }: Props) {
+export function TranscriptList({ segments, activeIndex, onSeek, onGenerate, isAnalysing }: Props) {
   const activeRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -31,8 +34,34 @@ export function TranscriptList({ segments, activeIndex, onSeek }: Props) {
 
   if (segments.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>
-        No transcript yet. Load a media file and click Analyse.
+      <div className="flex h-full items-center justify-center">
+        <button
+          onClick={onGenerate}
+          disabled={!onGenerate || isAnalysing}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 20px', borderRadius: 10,
+            background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
+            border: '1px solid var(--accent)',
+            color: 'var(--accent)', fontWeight: 600, fontSize: '0.82rem',
+            cursor: !onGenerate || isAnalysing ? 'default' : 'pointer',
+            opacity: !onGenerate || isAnalysing ? 0.4 : 1,
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={e => {
+            if (onGenerate && !isAnalysing) {
+              e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 18%, transparent)'
+              e.currentTarget.style.transform = 'translateY(-1px)'
+            }
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 10%, transparent)'
+            e.currentTarget.style.transform = 'translateY(0)'
+          }}
+        >
+          <AudioLines size={16} />
+          {isAnalysing ? 'Transcribing…' : 'Generate Transcript'}
+        </button>
       </div>
     )
   }

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
-  Plus, ChevronDown, Video, Activity, AudioLines, AlertTriangle,
+  Plus, ChevronDown, Video, Activity, AudioLines,
+  Maximize2, Minimize2,
 } from '../Icons/icons'
 import WaveSurfer from 'wavesurfer.js'
 
@@ -11,9 +12,8 @@ interface Props {
   subtitle: string
   onFileLoad: (file: File) => void
   onSeek: (ms: number) => void
-  onAnalyse?: () => void
-  canAnalyse?: boolean
-  needsModel?: boolean
+  expanded: boolean
+  onToggleExpand: () => void
   isAnalysing?: boolean
   stageLabel?: string
   progress?: number
@@ -25,7 +25,6 @@ function fmtTime(sec: number) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-/** Inline spectrogram — block element, not overlay */
 function SpectrogramBar({ mediaRef, visible }: { mediaRef: React.RefObject<HTMLVideoElement | null>; visible: boolean }) {
   const canvasRef    = useRef<HTMLCanvasElement>(null)
   const animRef     = useRef<number>(0)
@@ -96,7 +95,8 @@ function SpectrogramBar({ mediaRef, visible }: { mediaRef: React.RefObject<HTMLV
 
 export function InlinePlayer({
   mediaUrl, mediaFile, subtitle, onFileLoad, onSeek,
-  onAnalyse, canAnalyse, needsModel, isAnalysing, stageLabel, progress,
+  expanded, onToggleExpand,
+  isAnalysing, stageLabel, progress,
 }: Props) {
   const videoRef     = useRef<HTMLVideoElement>(null)
   const wsRef        = useRef<WaveSurfer | null>(null)
@@ -116,11 +116,14 @@ export function InlinePlayer({
   const [showSpectrogram, setShowSpectrogram] = useState(false)
   const [wsReady, setWsReady]                 = useState(false)
   const [draggingFile, setDraggingFile]       = useState(false)
+  const seekRef = useRef<HTMLInputElement>(null)
 
-  // ── WaveSurfer ─────────────────────────────────────────────────────
+  // Lazily init WaveSurfer when user toggles waveform on
   useEffect(() => {
+    if (!showWaveform) return
     const el = wsContainer.current
     if (!el || wsRef.current) return
+
     const ws = WaveSurfer.create({
       container: el,
       waveColor: 'rgba(242,163,91,0.22)',
@@ -136,9 +139,14 @@ export function InlinePlayer({
     })
     ws.on('ready', () => setWsReady(true))
     wsRef.current = ws
-    return () => { ws.destroy(); wsRef.current = null; setWsReady(false) }
-  }, [])
 
+    // Load media if already available
+    if (mediaUrl) ws.load(mediaUrl)
+
+    return () => { ws.destroy(); wsRef.current = null; setWsReady(false) }
+  }, [showWaveform])
+
+  // Load media into WaveSurfer when mediaUrl changes (if ws is ready)
   useEffect(() => { if (wsRef.current && mediaUrl) wsRef.current.load(mediaUrl) }, [mediaUrl])
 
   useEffect(() => {
@@ -147,7 +155,6 @@ export function InlinePlayer({
     ws.seekTo(currentSec / (ws.getDuration() || 1))
   }, [currentSec, wsReady])
 
-  // ── Video callbacks ────────────────────────────────────────────────
   const onTimeUpdate = useCallback(() => {
     const v = videoRef.current; if (!v) return
     setCurrentSec(v.currentTime)
@@ -170,6 +177,22 @@ export function InlinePlayer({
   const toggleMute = () => { const v = videoRef.current; if (!v) return; v.muted = !v.muted; setMuted(v.muted) }
   const setSpd = (s: number) => { setSpeed(s); if (videoRef.current) videoRef.current.playbackRate = s }
 
+  // Shared control button style with hover/tap feedback
+  const ctrlBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
+    background: 'none',
+    border: 'none',
+    color: 'var(--text)',
+    cursor: 'pointer',
+    opacity: 0.55,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 2,
+    borderRadius: 4,
+    transition: 'opacity 0.15s, background 0.15s, transform 0.1s',
+    ...extra,
+  })
+
   useEffect(() => {
     if (!speedOpen) return
     const h = (e: MouseEvent) => { if (speedRef.current && !speedRef.current.contains(e.target as Node)) setSpeedOpen(false) }
@@ -180,22 +203,25 @@ export function InlinePlayer({
 
   return (
     <div
-      style={{ background: 'var(--surface)', color: 'var(--text)' }}
+      style={{ background: 'var(--surface)', color: 'var(--text)', display: 'flex', flexDirection: 'column', height: expanded ? '100%' : undefined }}
       onDragOver={e => { e.preventDefault(); setDraggingFile(true) }}
       onDragLeave={() => setDraggingFile(false)}
       onDrop={e => { e.preventDefault(); setDraggingFile(false); const f = e.dataTransfer.files[0]; if (f) onFileLoad(f) }}
     >
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', flexShrink: 0 }}>
         <Video size={12} style={{ color: 'var(--accent)', flexShrink: 0 }} />
         <span style={{ fontSize: '0.70rem', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {mediaFile?.name || 'Media Player'}
         </span>
         {isAnalysing && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse-dot 1.6s ease-in-out infinite', flexShrink: 0 }} />}
+        <button onClick={onToggleExpand} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', opacity: 0.5, padding: 2, display: 'flex' }} title={expanded ? 'Exit full width' : 'Full width'}>
+          {expanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+        </button>
       </div>
 
       {/* ── Video ──────────────────────────────────────────────────────── */}
-      <div style={{ position: 'relative', height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--player-bg)', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', flex: '1 1 0', minHeight: expanded ? 0 : 320, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--player-bg)', overflow: 'hidden' }}>
         {draggingFile && (
           <div style={{ position: 'absolute', inset: 0, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'color-mix(in srgb, var(--accent) 8%, var(--bg))', border: '2px dashed var(--accent)' }}>
             <p style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '0.85rem' }}>Drop media file</p>
@@ -219,41 +245,47 @@ export function InlinePlayer({
 
       {/* ── Viz row ──────────────────────────────────────────────────────── */}
       {hasViz && (
-        <div style={{ background: 'var(--player-bg)', borderTop: '1px solid var(--border)' }}>
+        <div style={{ background: 'var(--player-bg)', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
           {showWaveform && <div ref={wsContainer} style={{ width: '100%', padding: '4px 8px' }} />}
           {showSpectrogram && <SpectrogramBar mediaRef={videoRef} visible={showSpectrogram} />}
         </div>
       )}
 
       {/* ── Controls ───────────────────────────────────────────────────── */}
-      <div style={{ padding: '4px 8px 6px', borderTop: '1px solid var(--border)' }}>
+      <div style={{ padding: '4px 8px 6px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+        <div style={{ position: 'relative', marginBottom: 2 }}>
         <input type="range" min={0} max={durationSec || 100} step={0.1} value={currentSec}
-          style={{ width: '100%', accentColor: 'var(--accent)', height: 2, display: 'block', cursor: 'pointer' }}
-          onChange={e => { const v = +e.target.value; setCurrentSec(v); if (videoRef.current) videoRef.current.currentTime = v }} />
+          ref={seekRef}
+          style={{ width: '100%', accentColor: 'var(--accent)', height: 4, display: 'block', cursor: 'pointer', borderRadius: 2, opacity: 0.7, transition: 'height 0.15s, opacity 0.15s' }}
+          onChange={e => { const v = +e.target.value; setCurrentSec(v); if (videoRef.current) videoRef.current.currentTime = v }}
+          onMouseEnter={e => { e.currentTarget.style.height = '8px'; e.currentTarget.style.opacity = '1' }}
+          onMouseLeave={e => { e.currentTarget.style.height = '4px'; e.currentTarget.style.opacity = '0.7' }} />
+      </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
-          <button onClick={() => skip(-10)} style={btn()} title="−10s"><SkipBack size={12} /></button>
-          <button onClick={togglePlay} style={{ ...btn(), width: 26, height: 26, borderRadius: '50%', background: 'color-mix(in srgb, var(--accent) 13%, transparent)' }}>
-            {playing ? <Pause size={13} /> : <Play size={13} />}
+          <button onClick={() => skip(-10)} style={ctrlBtn({ width: 32, height: 32 })} onMouseEnter={e => e.currentTarget.style.opacity = '1'} onMouseLeave={e => e.currentTarget.style.opacity = '0.55'} title="−10s"><SkipBack size={12} /></button>
+          <button onClick={togglePlay} style={ctrlBtn({ width: 36, height: 36, borderRadius: '50%', background: 'color-mix(in srgb, var(--accent) 13%, transparent)' })} onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.05)' }} onMouseLeave={e => { e.currentTarget.style.opacity = '0.55'; e.currentTarget.style.transform = 'scale(1)' }} title={playing ? 'Pause' : 'Play'}>
+            {playing ? <Pause size={14} /> : <Play size={14} />}
           </button>
-          <button onClick={() => skip(10)} style={btn()} title="+10s"><SkipForward size={12} /></button>
+          <button onClick={() => skip(10)} style={ctrlBtn({ width: 32, height: 32 })} onMouseEnter={e => e.currentTarget.style.opacity = '1'} onMouseLeave={e => e.currentTarget.style.opacity = '0.55'} title="+10s"><SkipForward size={12} /></button>
 
           <span style={{ fontSize: '0.62rem', fontFamily: 'monospace', opacity: 0.55, minWidth: 64, textAlign: 'center' }}>
             {fmtTime(currentSec)} / {fmtTime(durationSec)}
           </span>
 
-          {/* Speed */}
           <div ref={speedRef} className="relative">
             <button type="button" onClick={() => setSpeedOpen(o => !o)}
-              className="flex items-center gap-0.5 rounded px-1 py-0.5 text-[0.62rem] transition-colors"
-              style={{ color: 'var(--text)', opacity: 0.55, cursor: 'pointer', background: speedOpen ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent' }}>
+              className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[0.62rem] transition-colors"
+              style={{ color: 'var(--text)', opacity: 0.55, cursor: 'pointer', background: speedOpen ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent', borderRadius: 4, transition: 'opacity 0.15s, background 0.15s' }}
+              onMouseEnter={e => { if (!speedOpen) e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 10%, transparent)' }}
+              onMouseLeave={e => { if (!speedOpen) e.currentTarget.style.opacity = '0.55'; e.currentTarget.style.background = 'transparent' }}>
               {speed}×<ChevronDown size={8} style={{ opacity: 0.5, transform: speedOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.15s' }} />
             </button>
             {speedOpen && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 py-0.5 rounded-lg shadow-lg z-50" style={{ background: 'var(--surface)', border: '1px solid var(--border)', minWidth: 44 }}>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 py-0.5 rounded-lg shadow-lg z-50" style={{ background: 'var(--surface)', border: '1px solid var(--border)', minWidth: 48 }}>
                 {[0.5, 0.75, 1, 1.25, 1.5, 2, 3].map(s => (
                   <button key={s} type="button" onClick={() => { setSpd(s); setSpeedOpen(false) }}
-                    className="w-full text-left px-2 py-0.5 text-[0.62rem] transition-colors"
+                    className="w-full text-left px-3 py-1.5 text-[0.62rem] transition-colors"
                     style={{ color: s === speed ? 'var(--accent)' : 'var(--text)', fontWeight: s === speed ? 700 : 400, background: s === speed ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent' }}
                     onMouseEnter={e => { if (s !== speed) e.currentTarget.style.background = 'color-mix(in srgb, var(--text) 6%, transparent)' }}
                     onMouseLeave={e => { e.currentTarget.style.background = s === speed ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent' }}
@@ -265,35 +297,41 @@ export function InlinePlayer({
 
           <div style={{ flex: 1 }} />
 
-          <button onClick={toggleMute} style={btn()}>{muted ? <VolumeX size={11} /> : <Volume2 size={11} />}</button>
+          <button onClick={toggleMute} style={ctrlBtn({ width: 32, height: 32 })} onMouseEnter={e => e.currentTarget.style.opacity = '1'} onMouseLeave={e => e.currentTarget.style.opacity = '0.55'} title={muted ? 'Unmute' : 'Mute'}>{muted ? <VolumeX size={11} /> : <Volume2 size={11} />}</button>
           <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
-            style={{ width: 44, accentColor: 'var(--accent)', cursor: 'pointer' }}
-            onChange={e => setVol(+e.target.value)} />
+            style={{ width: 60, accentColor: 'var(--accent)', cursor: 'pointer', opacity: 0.7 }}
+            onChange={e => setVol(+e.target.value)}
+            onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '0.7'} />
 
           <button onClick={() => { setShowWaveform(v => !v); setShowSpectrogram(false) }}
-            style={{ ...btn(), border: showWaveform ? '1px solid var(--accent)' : '1px solid var(--border)', color: showWaveform ? 'var(--accent)' : 'var(--text)', background: showWaveform ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'transparent', borderRadius: 100, padding: '2px 6px', display: 'flex', alignItems: 'center' }}>
+            style={ctrlBtn({ borderRadius: 999, padding: '2px 8px', gap: 4 })}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '1'; if (!showWaveform) e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 8%, transparent)' }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '0.55'; if (!showWaveform) e.currentTarget.style.background = 'transparent' }}
+            title={showWaveform ? 'Hide Waveform' : 'Show Waveform'}>
             <Activity size={10} />
+            <span style={{ fontSize: '0.6rem', fontWeight: 600 }}>Wave</span>
           </button>
 
           <button onClick={() => { setShowSpectrogram(v => !v); setShowWaveform(false) }}
-            style={{ ...btn(), border: showSpectrogram ? '1px solid var(--accent)' : '1px solid var(--border)', color: showSpectrogram ? 'var(--accent)' : 'var(--text)', background: showSpectrogram ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'transparent', borderRadius: 100, padding: '2px 6px', display: 'flex', alignItems: 'center' }}>
+            style={ctrlBtn({ borderRadius: 999, padding: '2px 8px', gap: 4 })}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '1'; if (!showSpectrogram) e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 8%, transparent)' }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '0.55'; if (!showSpectrogram) e.currentTarget.style.background = 'transparent' }}
+            title={showSpectrogram ? 'Hide Spectrogram' : 'Show Spectrogram'}>
             <AudioLines size={10} />
+            <span style={{ fontSize: '0.6rem', fontWeight: 600 }}>Spec</span>
           </button>
 
           <button onClick={() => fileInputRef.current?.click()}
-            style={{ ...btn(), border: '1px solid var(--border)', borderRadius: 100, padding: '2px 6px', fontSize: '0.60rem', gap: 2, display: 'flex', alignItems: 'center' }}>
-            <Plus size={9} /> Add
+            style={ctrlBtn({ border: '1px solid var(--border)', borderRadius: 999, padding: '2px 8px', gap: 4, fontSize: '0.6rem' })}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.borderColor = 'var(--accent)' }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '0.55'; e.currentTarget.style.borderColor = 'var(--border)' }}
+            title="Add Media">
+            <Plus size={9} />
+            <span style={{ fontWeight: 600 }}>Add</span>
           </button>
           <input ref={fileInputRef} type="file" accept="audio/*,video/*" style={{ display: 'none' }}
             onChange={e => { const f = e.target.files?.[0]; if (f) onFileLoad(f); e.target.value = '' }} />
-
-          {canAnalyse && (
-            <button onClick={onAnalyse}
-              style={{ background: 'var(--accent)', color: '#1a1210', border: 'none', borderRadius: 100, padding: '2px 8px', fontSize: '0.62rem', fontWeight: 700, cursor: 'pointer' }}>
-              Analyse
-            </button>
-          )}
-          {needsModel && <span style={{ fontSize: '0.58rem', color: 'var(--accent-copper)', display: 'flex', alignItems: 'center', gap: 2 }}><AlertTriangle size={10} /> Models</span>}
         </div>
 
         {isAnalysing && (
@@ -309,6 +347,3 @@ export function InlinePlayer({
   )
 }
 
-function btn(): React.CSSProperties {
-  return { background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', opacity: 0.55, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 2, borderRadius: 4, transition: 'opacity 0.15s' }
-}

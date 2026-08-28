@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Trash2, Clock, Users, Calendar } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ThemeToggle } from '../../components/UI/ThemeToggle'
+import { Nav } from '../../components/Nav/Nav'
 import { historyApi, type Session } from '../../api/client'
 import { Link } from 'react-router-dom'
 import { usePlaygroundStore } from '../../store/playgroundStore'
@@ -54,20 +54,7 @@ export function History() {
     <div className="min-h-screen" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
 
       {/* Nav */}
-      <header
-        className="flex items-center justify-between px-8 py-4"
-        style={{ borderBottom: '1px solid var(--border)' }}
-      >
-        <Link to="/landing" className="flex items-center gap-2">
-          <img src="/owlia.svg" alt="OWLIA" className="h-7 w-7" />
-          <span className="font-bold">OWLIA</span>
-        </Link>
-        <div className="flex items-center gap-4">
-          <Link to="/playground" className="text-sm hover:text-[var(--accent)] transition-colors">Playground</Link>
-          <Link to="/download" className="text-sm hover:text-[var(--accent)] transition-colors">Download</Link>
-          <ThemeToggle />
-        </div>
-      </header>
+      <Nav />
 
       <main className="mx-auto max-w-5xl px-8 py-10">
         <h1 className="mb-1 text-2xl font-bold">History</h1>

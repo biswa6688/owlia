@@ -5,7 +5,7 @@ import {
   Mic, Users, BarChart2, FileText, Volume2, Terminal,
   ChevronDown, ArrowRight, Check, Zap, Shield, Cpu,
 } from 'lucide-react'
-import { ThemeToggle } from '../../components/UI/ThemeToggle'
+import { Nav } from '../../components/Nav/Nav'
 
 // ── Product mockup transcript data ──────────────────────────────────────────
 const MOCK_LINES = [
@@ -79,50 +79,6 @@ const FAQ = [
   { q: 'Does it need a GPU?', a: 'No — everything runs on CPU out of the box. ONNX Runtime GPU (DirectML) support is planned for a future release.' },
   { q: 'How does the CLI integration work?', a: 'OWLIA writes a JSON snapshot of your session to a temp file and passes it to Claude CLI or OpenCode as context. Responses stream into the app in real time.' },
 ]
-
-// ── Shared nav — reused in History/Download too via import ────────────────────
-function Nav() {
-  return (
-    <header
-      className="sticky top-0 z-50 flex items-center justify-between px-6 py-3 backdrop-blur-md"
-      style={{
-        borderBottom: '1px solid var(--border)',
-        background: 'color-mix(in srgb, var(--bg) 82%, transparent)',
-      }}
-    >
-      <div className="flex items-center gap-2.5">
-        <img src="/owlia.svg" alt="OWLIA" style={{ width: 30, height: 30 }} />
-        <span style={{ fontWeight: 700, fontSize: '1.05rem', letterSpacing: '0.03em' }}>OWLIA</span>
-      </div>
-      <nav className="flex items-center gap-3 text-sm font-medium">
-        <Link to="/playground" className="opacity-70 transition-opacity hover:opacity-100">Playground</Link>
-        <Link
-          to="/history"
-          className="transition-all hover:brightness-110"
-          style={{
-            padding: '5px 14px', borderRadius: 100, fontSize: '0.82rem',
-            border: '1px solid var(--border)', background: 'var(--surface)',
-            textDecoration: 'none', color: 'var(--text)',
-          }}
-        >
-          History
-        </Link>
-        <Link
-          to="/download"
-          className="transition-all hover:brightness-110"
-          style={{
-            padding: '5px 14px', borderRadius: 100, fontSize: '0.82rem', fontWeight: 600,
-            border: '1px solid var(--accent)', background: 'transparent',
-            textDecoration: 'none', color: 'var(--accent)',
-          }}
-        >
-          Download
-        </Link>
-        <ThemeToggle />
-      </nav>
-    </header>
-  )
-}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
-  Maximize, Minimize, Plus, Loader2, AlertCircle,
+  Maximize, Minimize, Plus, ChevronDown,
 } from 'lucide-react'
 import { usePlaygroundStore } from '../../store/playgroundStore'
 import { useModelStore } from '../../store/modelStore'
@@ -15,6 +15,7 @@ import { VoiceSpectrum } from '../../components/VoiceSpectrum/VoiceSpectrum'
 import { CliPanel } from '../../components/Cli/CliPanel'
 import { ModelGate } from '../../components/UI/ModelGateBanner'
 import { ProgressBar } from '../../components/UI/ProgressBar'
+import { Nav } from '../../components/Nav/Nav'
 import type { SpeakerSegment, SentimentResult, SummaryResult } from '../../api/client'
 
 type Tab = 'transcript' | 'sentiment' | 'summary' | 'cli'
@@ -39,11 +40,23 @@ export function Playground() {
   const [currentSec, setCurrentSec] = useState(0)
   const [durationSec, setDuration]  = useState(0)
   const [speed, setSpeed]           = useState(1)
+  const [speedOpen, setSpeedOpen]   = useState(false)
+  const speedRef                    = useRef<HTMLDivElement>(null)
   const [fullscreen, setFullscreen] = useState(false)
   const [subtitle, setSubtitle]     = useState('')
   const [dragging, setDragging]     = useState(false)
 
   useEffect(() => { refreshModels() }, [refreshModels])
+
+  // Close speed dropdown on outside click
+  useEffect(() => {
+    if (!speedOpen) return
+    const handler = (e: MouseEvent) => {
+      if (speedRef.current && !speedRef.current.contains(e.target as Node)) setSpeedOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [speedOpen])
 
   // ── Session restore (navigated from History) ───────────────────────────
   useEffect(() => {
@@ -191,263 +204,222 @@ export function Playground() {
         background: 'var(--bg)', color: 'var(--text)', overflow: 'hidden',
       }}
     >
-      {/* ── Top bar ─────────────────────────────────────────────────────── */}
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-        <div style={{
-          maxWidth: 1400, margin: '0 auto', padding: '0 24px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 44,
-        }}>
-          <Link to="/landing" style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: 0.75, textDecoration: 'none', color: 'var(--text)' }}>
-            <img src="/owlia.svg" alt="OWLIA" style={{ width: 22, height: 22 }} />
-            <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>OWLIA</span>
-          </Link>
+      {/* ── Shared nav ──────────────────────────────────────────────────── */}
+      <Nav />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.72rem' }}>
-            {isAnalysing && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
-                <Loader2 size={11} className="animate-spin" />
-                {STAGE_LABEL[store.stage]} {store.progress}%
-              </span>
-            )}
-            {store.stage === 'error' && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#f87171' }}>
-                <AlertCircle size={11} /> {store.error}
-              </span>
-            )}
-            <Link
-              to="/history"
-              style={{
-                textDecoration: 'none', fontSize: '0.72rem', fontWeight: 600,
-                color: 'var(--text)', opacity: 0.75,
-                padding: '4px 12px', borderRadius: 100,
-                border: '1px solid var(--border)',
-                background: 'var(--surface)',
-                transition: 'opacity 0.15s, background 0.15s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'var(--surface-2)' }}
-              onMouseLeave={e => { e.currentTarget.style.opacity = '0.75'; e.currentTarget.style.background = 'var(--surface)' }}
-            >
-              History
-            </Link>
-            <Link
-              to="/download"
-              style={{
-                textDecoration: 'none', fontSize: '0.72rem', fontWeight: 600,
-                color: 'var(--accent)',
-                padding: '4px 12px', borderRadius: 100,
-                border: '1px solid var(--accent)',
-                background: 'transparent',
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#1a1210' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--accent)' }}
-            >
-              Download
-            </Link>
+      {/* ── Video area ──────────────────────────────────────────────────── */}
+      <div
+        style={{
+          position: 'relative', height: '35vh', minHeight: 180, flexShrink: 0,
+          margin: '8px clamp(12px, 3vw, 40px) 0',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--player-bg)', borderRadius: 10,
+          overflow: 'hidden', cursor: store.mediaUrl ? 'default' : 'pointer',
+          border: '1px solid var(--border)',
+        }}
+        onDragOver={e => { e.preventDefault(); setDragging(true) }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        onClick={() => !store.mediaUrl && fileInputRef.current?.click()}
+      >
+        {dragging && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 50,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: '2px dashed var(--accent)', borderRadius: 10,
+            background: 'color-mix(in srgb, var(--accent) 6%, transparent)',
+          }}>
+            <p style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '0.95rem' }}>Drop media file</p>
           </div>
+        )}
+
+        {store.mediaUrl ? (
+          <video
+            ref={videoRef} src={store.mediaUrl}
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            onTimeUpdate={onTimeUpdate} onLoadedMetadata={onMeta}
+            onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)}
+          />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, opacity: 0.25 }}>
+            <img src="/owlia.svg" alt="" style={{ width: 48, height: 48 }} />
+            <p style={{ fontSize: '0.82rem' }}>Drag a file here or click Add Media</p>
+          </div>
+        )}
+
+        {subtitle && (
+          <div style={{
+            position: 'absolute', bottom: 36, left: '50%', transform: 'translateX(-50%)',
+            maxWidth: '75%', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)',
+            borderRadius: 8, padding: '5px 14px', fontSize: '0.85rem',
+            fontWeight: 500, color: 'var(--text)', textAlign: 'center', pointerEvents: 'none',
+          }}>
+            {subtitle}
+          </div>
+        )}
+      </div>
+
+      {/* ── Spectrum ──────────────────────────────────────────────────────── */}
+      <div style={{ height: 28, flexShrink: 0, margin: '0 clamp(12px, 3vw, 40px)', background: 'var(--player-bg)', borderRadius: '0 0 6px 6px', marginTop: -1 }}>
+        <VoiceSpectrum mediaRef={videoRef} isPlaying={playing} height={28} barColor="var(--accent)" barCount={80} />
+      </div>
+
+      {/* ── Controls ──────────────────────────────────────────────────────── */}
+      <div style={{ flexShrink: 0, margin: '6px clamp(12px, 3vw, 40px) 0', background: 'var(--surface)', borderRadius: 8, padding: '5px 14px' }}>
+        <input
+          type="range" min={0} max={durationSec || 100} step={0.1} value={currentSec}
+          style={{ width: '100%', accentColor: 'var(--accent)', height: 2, marginBottom: 4, display: 'block', cursor: 'pointer' }}
+          onChange={e => { const v = +e.target.value; setCurrentSec(v); if (videoRef.current) videoRef.current.currentTime = v }}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => skip(-10)} style={iconBtn()} title="−10s"><SkipBack size={14} /></button>
+          <button onClick={togglePlay}
+            style={{ ...iconBtn(), width: 30, height: 30, borderRadius: '50%', background: 'color-mix(in srgb, var(--accent) 13%, transparent)' }}>
+            {playing ? <Pause size={15} /> : <Play size={15} />}
+          </button>
+          <button onClick={() => skip(10)} style={iconBtn()} title="+10s"><SkipForward size={14} /></button>
+
+          <span style={{ fontSize: '0.68rem', fontFamily: 'monospace', opacity: 0.45 }}>
+            {fmtTime(currentSec)} / {fmtTime(durationSec)}
+          </span>
+
+          {/* Speed dropdown */}
+          <div ref={speedRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setSpeedOpen(o => !o)}
+              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[0.68rem] transition-colors"
+              style={{
+                color: 'var(--text)', opacity: 0.6, cursor: 'pointer',
+                background: speedOpen ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent',
+              }}
+            >
+              {speed}×
+              <ChevronDown size={9} style={{ opacity: 0.5, transform: speedOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.15s' }} />
+            </button>
+            {speedOpen && (
+              <div
+                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 py-1 rounded-lg shadow-lg z-50"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)', minWidth: 52 }}
+              >
+                {[0.5, 0.75, 1, 1.25, 1.5, 2, 3].map(s => (
+                  <button
+                    key={s} type="button"
+                    onClick={() => { setSpd(s); setSpeedOpen(false) }}
+                    className="w-full text-left px-2.5 py-1 text-[0.68rem] transition-colors"
+                    style={{
+                      color: s === speed ? 'var(--accent)' : 'var(--text)',
+                      fontWeight: s === speed ? 700 : 400,
+                      background: s === speed ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent',
+                    }}
+                    onMouseEnter={e => { if (s !== speed) e.currentTarget.style.background = 'color-mix(in srgb, var(--text) 6%, transparent)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = s === speed ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent' }}
+                  >
+                    {s}×
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ flex: 1 }} />
+
+          <button onClick={toggleMute} style={iconBtn()}>
+            {muted ? <VolumeX size={12} /> : <Volume2 size={12} />}
+          </button>
+          <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
+            style={{ width: 56, accentColor: 'var(--accent)', cursor: 'pointer' }}
+            onChange={e => setVol(+e.target.value)} />
+
+          {canAnalyse && (
+            <button onClick={analyse}
+              style={{ background: 'var(--accent)', color: '#1a1210', border: 'none', borderRadius: 100, padding: '3px 12px', fontSize: '0.70rem', fontWeight: 700, cursor: 'pointer' }}>
+              Analyse
+            </button>
+          )}
+          {needsModel && (
+            <Link to="/download"
+              style={{ background: 'var(--accent-copper)', color: 'var(--text)', borderRadius: 100, padding: '3px 10px', fontSize: '0.70rem', fontWeight: 600, textDecoration: 'none' }}>
+              ⚠ Models
+            </Link>
+          )}
+
+          <button onClick={() => fileInputRef.current?.click()}
+            style={{ ...iconBtn(), border: '1px solid var(--border)', borderRadius: 100, padding: '3px 8px', fontSize: '0.68rem', gap: 3, display: 'flex', alignItems: 'center' }}>
+            <Plus size={10} /> Add
+          </button>
+          <input ref={fileInputRef} type="file" accept="audio/*,video/*" style={{ display: 'none' }} onChange={onInput} />
+
+          <button onClick={toggleFs} style={iconBtn()}>
+            {fullscreen ? <Minimize size={12} /> : <Maximize size={12} />}
+          </button>
         </div>
       </div>
 
-      {/* ── Main centred column ─────────────────────────────────────────── */}
-      <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{
-          maxWidth: 1400, width: '100%', margin: '0 auto',
-          padding: '0 clamp(12px, 3vw, 40px)',
-          flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column',
-        }}>
+      {/* Analysis progress */}
+      {isAnalysing && (
+        <div style={{ flexShrink: 0, margin: '2px clamp(12px, 3vw, 40px) 0' }}>
+          <ProgressBar value={store.progress} color="var(--accent)" className="h-[2px]" />
+          <p style={{ textAlign: 'right', fontSize: '0.60rem', opacity: 0.3, marginTop: 1 }}>
+            {STAGE_LABEL[store.stage]}
+          </p>
+        </div>
+      )}
 
-          {/* ── Player ────────────────────────────────────────────────── */}
-          <div
-            style={{
-              position: 'relative', flex: '1 1 0', minHeight: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'var(--player-bg)',
-              borderRadius: 12, marginTop: 16,
-              overflow: 'hidden', cursor: store.mediaUrl ? 'default' : 'pointer',
-              border: '1px solid var(--border)',
-              boxShadow: 'inset 0 2px 12px rgba(0,0,0,0.25)',
-            }}
-            onDragOver={e => { e.preventDefault(); setDragging(true) }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={onDrop}
-            onClick={() => !store.mediaUrl && fileInputRef.current?.click()}
-          >
-            {dragging && (
-              <div style={{
-                position: 'absolute', inset: 0, zIndex: 50,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: '2px dashed var(--accent)', borderRadius: 12,
-                background: 'color-mix(in srgb, var(--accent) 6%, transparent)',
-              }}>
-                <p style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '1rem' }}>Drop media file</p>
-              </div>
-            )}
+      {/* ── Tabs panel — fills remaining height, scrolls internally ─────── */}
+      <div style={{
+        flex: '1 1 0', minHeight: 0,
+        display: 'flex', flexDirection: 'column',
+        margin: '6px clamp(12px, 3vw, 40px) clamp(6px, 1vw, 12px)',
+        background: 'var(--surface)', borderRadius: 10,
+        border: '1px solid var(--border)', overflow: 'hidden',
+      }}>
+        {/* Tab bar */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', flexShrink: 0 }}>
+          {TABS.map(t => (
+            <button
+              key={t.id} type="button" onClick={() => setTab(t.id)}
+              style={{
+                padding: '8px 14px', fontSize: '0.75rem', fontWeight: 600,
+                background: 'none', border: 'none', cursor: 'pointer',
+                color:        tab === t.id ? 'var(--accent)' : 'var(--text-muted)',
+                borderBottom: tab === t.id ? '2px solid var(--accent)' : '2px solid transparent',
+                transition: 'color 0.15s', whiteSpace: 'nowrap',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-            {store.mediaUrl ? (
-              <video
-                ref={videoRef} src={store.mediaUrl}
-                style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 8 }}
-                onTimeUpdate={onTimeUpdate} onLoadedMetadata={onMeta}
-                onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)}
-              />
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, opacity: 0.28 }}>
-                <img src="/owlia.svg" alt="" style={{ width: 56, height: 56 }} />
-                <p style={{ fontSize: '0.85rem' }}>Drag a file here or click Add Media</p>
-              </div>
-            )}
-
-            {/* Subtitle */}
-            {subtitle && (
-              <div style={{
-                position: 'absolute', bottom: 48, left: '50%', transform: 'translateX(-50%)',
-                maxWidth: '75%', background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(8px)',
-                borderRadius: 10, padding: '6px 16px', fontSize: '0.9rem',
-                fontWeight: 500, color: 'var(--text)', textAlign: 'center', pointerEvents: 'none',
-              }}>
-                {subtitle}
-              </div>
-            )}
-          </div>
-
-          {/* ── Spectrum ──────────────────────────────────────────────── */}
-          <div style={{ height: 44, background: 'var(--player-bg)', borderTop: '1px solid var(--border)', borderRadius: '0 0 4px 4px', marginBottom: 0 }}>
-            <VoiceSpectrum mediaRef={videoRef} isPlaying={playing} height={44} barColor="var(--accent)" barCount={80} />
-          </div>
-
-          {/* ── Controls ──────────────────────────────────────────────── */}
-          <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '8px 16px', marginTop: 8, flexShrink: 0 }}>
-            {/* Seek bar */}
-            <input
-              type="range" min={0} max={durationSec || 100} step={0.1} value={currentSec}
-              style={{ width: '100%', accentColor: 'var(--accent)', height: 3, marginBottom: 8, display: 'block', cursor: 'pointer' }}
-              onChange={e => { const v = +e.target.value; setCurrentSec(v); if (videoRef.current) videoRef.current.currentTime = v }}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              {/* Transport */}
-              <button onClick={() => skip(-10)} style={iconBtn()} title="−10s"><SkipBack size={16} /></button>
-              <button onClick={togglePlay}
-                style={{ ...iconBtn(), width: 36, height: 36, borderRadius: '50%', background: 'color-mix(in srgb, var(--accent) 13%, transparent)' }}>
-                {playing ? <Pause size={18} /> : <Play size={18} />}
-              </button>
-              <button onClick={() => skip(10)} style={iconBtn()} title="+10s"><SkipForward size={16} /></button>
-
-              <span style={{ fontSize: '0.72rem', fontFamily: 'monospace', opacity: 0.5, marginLeft: 4 }}>
-                {fmtTime(currentSec)} / {fmtTime(durationSec)}
-              </span>
-
-              <select
-                value={speed} onChange={e => setSpd(+e.target.value)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '0.72rem', opacity: 0.65, cursor: 'pointer' }}
-              >
-                {[0.5, 0.75, 1, 1.25, 1.5, 2, 3].map(s => (
-                  <option key={s} value={s} style={{ background: 'var(--surface)' }}>{s}×</option>
-                ))}
-              </select>
-
-              <div style={{ flex: 1 }} />
-
-              {/* Volume */}
-              <button onClick={toggleMute} style={iconBtn()}>
-                {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-              </button>
-              <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
-                style={{ width: 72, accentColor: 'var(--accent)', cursor: 'pointer' }}
-                onChange={e => setVol(+e.target.value)} />
-
-              {/* Action buttons */}
-              {canAnalyse && (
-                <button onClick={analyse}
-                  style={{ background: 'var(--accent)', color: '#1a1210', border: 'none', borderRadius: 100, padding: '5px 16px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>
-                  Analyse
-                </button>
-              )}
-              {needsModel && (
-                <Link to="/download"
-                  style={{ background: 'var(--accent-copper)', color: 'var(--text)', borderRadius: 100, padding: '5px 14px', fontSize: '0.75rem', fontWeight: 600, textDecoration: 'none' }}
-                  title="Whisper + VAD models required">
-                  ⚠ Models needed
-                </Link>
-              )}
-
-              <button onClick={() => fileInputRef.current?.click()}
-                style={{ ...iconBtn(), border: '1px solid var(--border)', borderRadius: 100, padding: '4px 12px', fontSize: '0.72rem', gap: 5, display: 'flex', alignItems: 'center' }}>
-                <Plus size={12} /> Add Media
-              </button>
-              <input ref={fileInputRef} type="file" accept="audio/*,video/*" style={{ display: 'none' }} onChange={onInput} />
-
-              <button onClick={toggleFs} style={iconBtn()}>
-                {fullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
-              </button>
-            </div>
-          </div>
-
-          {/* Analysis progress */}
-          {isAnalysing && (
-            <div style={{ padding: '2px 0 4px' }}>
-              <ProgressBar value={store.progress} color="var(--accent)" className="h-[2px]" />
-              <p style={{ textAlign: 'right', fontSize: '0.65rem', opacity: 0.35, marginTop: 2 }}>
-                {STAGE_LABEL[store.stage]}
-              </p>
-            </div>
+        {/* Tab content — scrolls */}
+        <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+          {tab === 'transcript' && (
+            <ModelGate feature="transcribe">
+              <TranscriptList segments={store.segments} activeIndex={store.activeSegmentIndex} onSeek={seekToMs} />
+            </ModelGate>
           )}
-
-          {/* ── Tabs + panel ──────────────────────────────────────────── */}
-          <div style={{
-            display: 'flex', flexDirection: 'column', flex: '0 0 300px',
-            minHeight: 260, marginTop: 10, marginBottom: 16,
-            background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden',
-          }}>
-            {/* Tab bar */}
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', flexShrink: 0 }}>
-              {TABS.map(t => (
-                <button
-                  key={t.id} type="button" onClick={() => setTab(t.id)}
-                  style={{
-                    padding: '10px 16px', fontSize: '0.78rem', fontWeight: 600,
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color:        tab === t.id ? 'var(--accent)' : 'var(--text-muted)',
-                    borderBottom: tab === t.id ? '2px solid var(--accent)' : '2px solid transparent',
-                    transition: 'color 0.15s',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab content — inherits global CSS vars */}
-            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-              {tab === 'transcript' && (
-                <ModelGate feature="transcribe">
-                  <TranscriptList segments={store.segments} activeIndex={store.activeSegmentIndex} onSeek={seekToMs} />
-                </ModelGate>
-              )}
-              {tab === 'sentiment' && (
-                <ModelGate feature="sentiment">
-                  <SentimentView sentiment={store.sentiment} totalDurationMs={totalDurMs} />
-                </ModelGate>
-              )}
-              {tab === 'summary' && (
-                <ModelGate feature="summary">
-                  <SummaryView summary={store.summary} />
-                </ModelGate>
-              )}
-              {tab === 'cli' && <CliPanel sessionId={store.sessionId} />}
-            </div>
-          </div>
+          {tab === 'sentiment' && (
+            <ModelGate feature="sentiment">
+              <SentimentView sentiment={store.sentiment} totalDurationMs={totalDurMs} />
+            </ModelGate>
+          )}
+          {tab === 'summary' && (
+            <ModelGate feature="summary">
+              <SummaryView summary={store.summary} />
+            </ModelGate>
+          )}
+          {tab === 'cli' && <CliPanel sessionId={store.sessionId} />}
         </div>
       </div>
     </div>
   )
 }
 
-// Small reusable button — inherits colour from CSS variables
 function iconBtn(): React.CSSProperties {
   return {
     background: 'none', border: 'none', color: 'var(--text)',
-    cursor: 'pointer', opacity: 0.65, display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: 4, borderRadius: 6, transition: 'opacity 0.15s',
+    cursor: 'pointer', opacity: 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: 3, borderRadius: 5, transition: 'opacity 0.15s',
   }
 }

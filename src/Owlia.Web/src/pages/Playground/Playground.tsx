@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePlaygroundStore } from '../../store/playgroundStore'
 import { useModelStore } from '../../store/modelStore'
 import { mediaApi, transcriptApi } from '../../api/client'
@@ -20,6 +20,22 @@ export function Playground() {
 
   const [rightTab, setRightTab] = useState<RightTab>('transcript')
   const [subtitle, setSubtitle] = useState('')
+  const [colPct, setColPct]     = useState(50)
+  const containerRef           = useRef<HTMLDivElement>(null)
+  const isDraggingCol          = useRef(false)
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!isDraggingCol.current || !containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      const pct = ((e.clientX - rect.left) / rect.width) * 100
+      setColPct(Math.min(80, Math.max(20, pct)))
+    }
+    const onUp = () => { isDraggingCol.current = false; document.body.style.cursor = ''; document.body.style.userSelect = '' }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    return () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
+  }, [])
 
   useEffect(() => { refreshModels() }, [refreshModels])
 
@@ -114,10 +130,10 @@ export function Playground() {
       <Nav />
 
       {/* ── Two-column body ────────────────────────────────────────────── */}
-      <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', gap: 0, overflow: 'hidden' }}>
+      <div ref={containerRef} style={{ flex: '1 1 0', minHeight: 0, display: 'flex', overflow: 'hidden' }}>
 
         {/* ── Left column: Player + Sentiment ──────────────────────────── */}
-        <div style={{ width: '38%', minWidth: 320, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
+        <div style={{ width: `${colPct}%`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
           {/* Inline media player */}
           <div style={{ flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
@@ -142,6 +158,16 @@ export function Playground() {
               <SentimentView sentiment={store.sentiment} totalDurationMs={totalDurMs} />
             </ModelGate>
           </div>
+        </div>
+
+        {/* ── Draggable divider ──────────────────────────────────────────── */}
+        <div
+          onMouseDown={() => { isDraggingCol.current = true; document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none' }}
+          style={{ width: 5, flexShrink: 0, cursor: 'col-resize', background: 'var(--border)', transition: 'background 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onMouseEnter={e => { if (!isDraggingCol.current) e.currentTarget.style.background = 'var(--accent)' }}
+          onMouseLeave={e => { if (!isDraggingCol.current) e.currentTarget.style.background = 'var(--border)' }}
+        >
+          <div style={{ width: 1, height: 24, background: 'var(--text)', opacity: 0.15, borderRadius: 1 }} />
         </div>
 
         {/* ── Right column: Tabs ───────────────────────────────────────── */}

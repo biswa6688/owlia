@@ -195,7 +195,7 @@ export function InlinePlayer({
       </div>
 
       {/* ── Video ──────────────────────────────────────────────────────── */}
-      <div style={{ position: 'relative', height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--player-bg)', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--player-bg)', overflow: 'hidden' }}>
         {draggingFile && (
           <div style={{ position: 'absolute', inset: 0, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'color-mix(in srgb, var(--accent) 8%, var(--bg))', border: '2px dashed var(--accent)' }}>
             <p style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '0.85rem' }}>Drop media file</p>

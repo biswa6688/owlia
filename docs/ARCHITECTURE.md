@@ -166,15 +166,17 @@ Media File (audio/video)
 
 | Model | Purpose | Format | RAM | Source |
 |---|---|---|---|---|
-| silero_vad.onnx | Voice Activity Detection | ONNX | ~10MB | snakers4/silero-vad |
-| whisper-large-v3 | ASR + timestamps | ONNX | ~3.1GB | openai/whisper (optimum export) |
-| pyannote-segmentation-3.0 | Speaker segmentation | ONNX | ~80MB | pyannote/segmentation-3.0 |
-| wespeaker-ecapa-tdnn | Speaker embedding | ONNX | ~90MB | wenet-e2e/wespeaker |
-| roberta-sentiment | Sentiment (0-100) | ONNX | ~500MB | cardiffnlp/twitter-roberta-base-sentiment-latest |
-| bart-large-cnn | Summarization | ONNX | ~1.6GB | facebook/bart-large-cnn |
-| kokoro-v1.0 | TTS (high quality) | ONNX | ~300MB | kokoro-tts/kokoro |
+| silero_vad.onnx | Voice Activity Detection | ONNX (v5, 1 file) | ~2.3MB | snakers4/silero-vad |
+| whisper-large-v3 | ASR + timestamps | ONNX (encoder+decoder, 4 files w/ external data) | ~6.2GB | onnx-community/whisper-large-v3-ONNX |
+| pyannote-segmentation-3.0 | Speaker segmentation | ONNX (1 file) | ~5.7MB | onnx-community/pyannote-segmentation-3.0 |
+| wespeaker-ecapa-tdnn | Speaker embedding | ONNX (1 file) | ~23.7MB | Wespeaker/wespeaker-ecapa-tdnn512-LM |
+| roberta-sentiment | Sentiment (0-100) | ONNX (1 file) | ~476MB | Xenova/twitter-roberta-base-sentiment-latest |
+| bart-cnn | Summarization | ONNX (encoder+decoder, 2 files) | ~1.7GB | Xenova/bart-large-cnn |
+| kokoro-v1.0 | TTS (high quality) | ONNX (1 file) | ~310MB | onnx-community/Kokoro-82M-v1.0-ONNX |
 
-**Total model RAM: ~5.7GB** — well within 36GB constraint.
+**Total model RAM: ~8.9GB** — well within 36GB constraint.
+
+**Note:** the original manifest (facebook/openai/pyannote/wenet-e2e/hexgrad/cardiffnlp source URLs) was entirely broken — those orgs don't host ONNX exports at those paths. Fixed 2026-08-28 to the `onnx-community`/`Xenova`/`Wespeaker` mirror orgs, which do. See `docs/MEMORY.md` for the full investigation and the planned Whisper.net/sherpa-onnx/LLamaSharp engine swaps.
 
 ---
 

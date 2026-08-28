@@ -10,7 +10,9 @@ namespace Owlia.AI.Vad;
 public sealed class SileroVadRunner : IDisposable
 {
     private const int SampleRate = 16000;
-    private const int WindowSizeSamples = 512; // Silero VAD internal chunk size
+    private const int WindowSizeSamples = 512;  // Silero VAD v5 chunk size
+    private const int ContextSamples = 64;       // v5 convolutional front-end lookback
+    private const int StateDim = 128;            // v5 combined recurrent state size
     private const float Threshold = 0.5f;
     private const float MinSilenceDurationSec = 0.3f;
     private const float SpeechPadSec = 0.1f;
@@ -28,9 +30,12 @@ public sealed class SileroVadRunner : IDisposable
         int minSilenceSamples = (int)(MinSilenceDurationSec * SampleRate);
         int speechPadSamples = (int)(SpeechPadSec * SampleRate);
 
-        // State tensors (reset per call)
-        var h = new float[2, 1, 64];
-        var c = new float[2, 1, 64];
+        // v5 combined state tensor [2, 1, 128] (reset per call), fed back each step
+        var state = new float[2 * 1 * StateDim];
+
+        // Rolling 64-sample context carried from the tail of the previous chunk
+        // (zeros for the very first chunk) — model input is context(64) + chunk(512) = 576.
+        var context = new float[ContextSamples];
 
         var probs = new List<float>();
 
@@ -43,28 +48,30 @@ public sealed class SileroVadRunner : IDisposable
             var chunk = new float[WindowSizeSamples]; // zero-padded if needed
             Array.Copy(audio, start, chunk, 0, end - start);
 
-            var inputTensor = new DenseTensor<float>(chunk, new[] { 1, WindowSizeSamples });
-            var srTensor = new DenseTensor<long>(new[] { (long)SampleRate }, new[] { 1 });
-            var hTensor = new DenseTensor<float>(Flatten(h), new[] { 2, 1, 64 });
-            var cTensor = new DenseTensor<float>(Flatten(c), new[] { 2, 1, 64 });
+            var inputBuf = new float[ContextSamples + WindowSizeSamples];
+            Array.Copy(context, 0, inputBuf, 0, ContextSamples);
+            Array.Copy(chunk, 0, inputBuf, ContextSamples, WindowSizeSamples);
+
+            var inputTensor = new DenseTensor<float>(inputBuf, new[] { 1, inputBuf.Length });
+            var srTensor = new DenseTensor<long>(new[] { (long)SampleRate }, Array.Empty<int>());
+            var stateTensor = new DenseTensor<float>(state, new[] { 2, 1, StateDim });
 
             var inputs = new List<NamedOnnxValue>
             {
                 NamedOnnxValue.CreateFromTensor("input", inputTensor),
                 NamedOnnxValue.CreateFromTensor("sr", srTensor),
-                NamedOnnxValue.CreateFromTensor("h", hTensor),
-                NamedOnnxValue.CreateFromTensor("c", cTensor),
+                NamedOnnxValue.CreateFromTensor("state", stateTensor),
             };
 
             using var results = _session.Run(inputs);
-            var outputArr = results.First().AsEnumerable<float>().ToArray();
+            var outputArr = results.First(r => r.Name == "output").AsEnumerable<float>().ToArray();
             probs.Add(outputArr[0]);
 
-            // Update state
-            var hn = results.Skip(1).First().AsEnumerable<float>().ToArray();
-            var cn = results.Skip(2).First().AsEnumerable<float>().ToArray();
-            Unflatten(hn, h);
-            Unflatten(cn, c);
+            var newState = results.First(r => r.Name == "stateN").AsEnumerable<float>().ToArray();
+            Array.Copy(newState, state, state.Length);
+
+            // Tail of this chunk becomes next iteration's context.
+            Array.Copy(chunk, WindowSizeSamples - ContextSamples, context, 0, ContextSamples);
         }
 
         return ProbaToSegments(probs, audio.Length, speechPadSamples, minSilenceSamples);
@@ -121,21 +128,6 @@ public sealed class SileroVadRunner : IDisposable
         }
 
         return segments;
-    }
-
-    // ── Tensor helpers ─────────────────────────────────────────────────────
-
-    private static float[] Flatten(float[,,] arr)
-    {
-        int total = arr.GetLength(0) * arr.GetLength(1) * arr.GetLength(2);
-        var flat = new float[total];
-        Buffer.BlockCopy(arr, 0, flat, 0, total * sizeof(float));
-        return flat;
-    }
-
-    private static void Unflatten(float[] flat, float[,,] arr)
-    {
-        Buffer.BlockCopy(flat, 0, arr, 0, flat.Length * sizeof(float));
     }
 
     public void Dispose() => _session.Dispose();

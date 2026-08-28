@@ -7,6 +7,7 @@ public class SummaryEntity
     public string SummaryText { get; set; } = string.Empty;
     public string KeywordsJson { get; set; } = "[]";
     public string KeyTakeawaysJson { get; set; } = "[]";
+    public double SpeechPercentage { get; set; }
     public DateTime CreatedAt { get; set; }
 
     public SessionEntity? Session { get; set; }

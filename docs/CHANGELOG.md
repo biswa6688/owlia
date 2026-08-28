@@ -7,6 +7,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — Semantic Ve
 
 ## [Unreleased]
 
+### Fixed — Session 5 (model manifest, VAD version, window branding)
+
+- **Critical**: all 7 URLs in `models/models.json` returned 404/401 — pointed at orgs that don't host ONNX exports at those paths. Verified real replacement URLs via `curl` for every model before writing them. Whisper large-v3 and BART-CNN have no single-file ONNX export anywhere; manifest schema changed to `files: [...]` per model (multi-file support), `ModelManager.cs` rewritten to download/verify all files per model with cumulative progress, `TranscriptService.cs`/`SummaryRunner.cs` wired to the encoder+decoder paths. Real total download size is ~8.9GB (was documented ~5.7GB).
+- **Critical**: `SileroVadRunner.cs` sent v4-era ONNX inputs (`h`/`c` separate `[2,1,64]` state tensors) against what is actually a v5 model (current `snakers4/silero-vad`). Verified real input signature via `InferenceSession.InputMetadata` on the downloaded file (`input`, `sr`, single `state`[2,1,128] tensor) and rewrote to match, including the 64-sample rolling context window v5 requires. Functionally verified against the real model (silence/noise correctly score near-zero probability).
+- Window showed the default OS icon and default title bar color despite branding being requested. Generated `assets/owlia.ico` from the SVG (throwaway C# rasterizer, no SVG tool was installed). Wired `<ApplicationIcon>` (exe icon), `window.SetIconFile()` (Photino window icon), and a brand-colored title bar via the real Win32 `DwmSetWindowAttribute`/`DWMWA_CAPTION_COLOR` API (Photino has no cross-platform titlebar-color API — confirmed by exhaustively enumerating its DLL's exported methods). Added `SetupIconFile` to the InnoSetup script. Screenshot-verified.
+
+### Added — Session 5
+
+- `SummaryResult.SpeechPercentage` / `SummaryEntity.SpeechPercentage` — percentage of media that is actual speech per Silero VAD (silence/noise excluded), computed from existing VAD segments, no new model needed. EF migration `AddSpeechPercentage`. Backend only so far — frontend display not yet added.
+
 ### Fixed — Session 4 (Photino window rendering blank)
 
 - **Critical**: `Owlia.Host` window opened with correct native title bar but a permanently blank white content area — WebView2 was silently never initializing (confirmed via process tree: `msedgewebview2.exe` never spawned as a child of `Owlia.Host.exe`, with no exception or log error). Root cause: `Program.cs` used C# top-level statements, so the entry thread ran MTA (the .NET default); WebView2 requires an STA window-creating thread. Fixed by converting to an explicit `[STAThread] static void Main`. Verified via screenshot — same content that already rendered correctly in a real browser now renders identically inside the Photino window.

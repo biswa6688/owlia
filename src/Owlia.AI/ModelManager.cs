@@ -48,18 +48,23 @@ public sealed class ModelManager : IModelManagerService
         var result = new List<ModelStatus>();
         foreach (var entry in manifest)
         {
-            var path = Path.Combine(_modelsDir, entry.FileName);
-            var exists = File.Exists(path);
+            var fileStates = entry.Files.Select(f =>
+            {
+                var path = Path.Combine(_modelsDir, f.FileName);
+                var exists = File.Exists(path);
+                return (exists, verified: exists && VerifyHash(path, f.Sha256));
+            }).ToList();
+
             result.Add(new ModelStatus
             {
                 Id = entry.Id,
-                FileName = entry.FileName,
+                FileName = entry.Files.Count == 1 ? entry.Files[0].FileName : $"{entry.Id} ({entry.Files.Count} files)",
                 Feature = entry.Feature,
-                SizeBytes = entry.SizeBytes,
-                Sha256 = entry.Sha256,
-                Url = entry.Url,
-                Downloaded = exists,
-                Verified = exists && VerifyHash(path, entry.Sha256),
+                SizeBytes = entry.Files.Sum(f => f.SizeBytes),
+                Sha256 = entry.Files.Count == 1 ? entry.Files[0].Sha256 : string.Empty,
+                Url = entry.Files.Count == 1 ? entry.Files[0].Url : string.Empty,
+                Downloaded = fileStates.All(s => s.exists),
+                Verified = fileStates.All(s => s.verified),
             });
         }
         return result;
@@ -74,51 +79,61 @@ public sealed class ModelManager : IModelManagerService
         var entry = manifest.FirstOrDefault(m => m.Id == modelId)
             ?? throw new ArgumentException($"Unknown model id: {modelId}");
 
-        var destPath = Path.Combine(_modelsDir, entry.FileName);
-        var tmpPath = destPath + ".tmp";
+        var totalBytes = entry.Files.Sum(f => f.SizeBytes);
+        long bytesDoneBeforeCurrentFile = 0;
 
         using var http = new HttpClient();
         http.Timeout = Timeout.InfiniteTimeSpan;
 
-        using var response = await http.GetAsync(entry.Url, HttpCompletionOption.ResponseHeadersRead, ct);
-        response.EnsureSuccessStatusCode();
-
-        var total = response.Content.Headers.ContentLength ?? entry.SizeBytes;
-
-        await using var src = await response.Content.ReadAsStreamAsync(ct);
-        await using var dst = File.Create(tmpPath);
-
-        var buffer = new byte[81920];
-        long downloaded = 0;
-        int read;
-
-        while ((read = await src.ReadAsync(buffer, ct)) > 0)
+        foreach (var file in entry.Files)
         {
-            await dst.WriteAsync(buffer.AsMemory(0, read), ct);
-            downloaded += read;
-            progress.Report((downloaded, total));
+            var destPath = Path.Combine(_modelsDir, file.FileName);
+            var destDir = Path.GetDirectoryName(destPath);
+            if (!string.IsNullOrEmpty(destDir)) Directory.CreateDirectory(destDir);
+            var tmpPath = destPath + ".tmp";
+
+            using (var response = await http.GetAsync(file.Url, HttpCompletionOption.ResponseHeadersRead, ct))
+            {
+                response.EnsureSuccessStatusCode();
+
+                await using var src = await response.Content.ReadAsStreamAsync(ct);
+                await using var dst = File.Create(tmpPath);
+
+                var buffer = new byte[81920];
+                int read;
+                long fileDownloaded = 0;
+
+                while ((read = await src.ReadAsync(buffer, ct)) > 0)
+                {
+                    await dst.WriteAsync(buffer.AsMemory(0, read), ct);
+                    fileDownloaded += read;
+                    progress.Report((bytesDoneBeforeCurrentFile + fileDownloaded, totalBytes));
+                }
+
+                await dst.FlushAsync(ct);
+            }
+
+            // SHA256 validation (skip if sha256 field is empty — manifest placeholder).
+            if (!string.IsNullOrEmpty(file.Sha256) && !VerifyHash(tmpPath, file.Sha256))
+            {
+                File.Delete(tmpPath);
+                throw new InvalidDataException($"SHA256 mismatch for {file.FileName}");
+            }
+
+            File.Move(tmpPath, destPath, overwrite: true);
+            bytesDoneBeforeCurrentFile += file.SizeBytes;
         }
-
-        await dst.FlushAsync(ct);
-        dst.Close();
-
-        // SHA256 validation (skip if sha256 field is empty — manifest placeholder).
-        if (!string.IsNullOrEmpty(entry.Sha256) && !VerifyHash(tmpPath, entry.Sha256))
-        {
-            File.Delete(tmpPath);
-            throw new InvalidDataException($"SHA256 mismatch for {entry.FileName}");
-        }
-
-        File.Move(tmpPath, destPath, overwrite: true);
     }
 
-    public string GetModelPath(string modelId)
+    public string GetModelPath(string modelId) => GetModelPaths(modelId).First();
+
+    public List<string> GetModelPaths(string modelId)
     {
-        // Synchronous — just return the expected path; caller checks File.Exists.
+        // Synchronous — just return the expected paths; caller checks File.Exists.
         var manifest = LoadManifestAsync(CancellationToken.None).GetAwaiter().GetResult();
         var entry = manifest.FirstOrDefault(m => m.Id == modelId)
             ?? throw new ArgumentException($"Unknown model id: {modelId}");
-        return Path.Combine(_modelsDir, entry.FileName);
+        return entry.Files.Select(f => Path.Combine(_modelsDir, f.FileName)).ToList();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -155,13 +170,18 @@ public sealed class ModelManager : IModelManagerService
         return string.Equals(actual, expectedHex, StringComparison.OrdinalIgnoreCase);
     }
 
-    // ── Manifest DTO ─────────────────────────────────────────────────────────
+    // ── Manifest DTOs ────────────────────────────────────────────────────────
 
     private sealed class ModelManifestEntry
     {
         public string Id { get; set; } = string.Empty;
-        public string FileName { get; set; } = string.Empty;
         public string Feature { get; set; } = string.Empty;
+        public List<ModelFileEntry> Files { get; set; } = new();
+    }
+
+    private sealed class ModelFileEntry
+    {
+        public string FileName { get; set; } = string.Empty;
         public long SizeBytes { get; set; }
         public string Sha256 { get; set; } = string.Empty;
         public string Url { get; set; } = string.Empty;

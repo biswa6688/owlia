@@ -19,6 +19,14 @@ public sealed class SummaryRunner : IDisposable
     private readonly InferenceSession _encoderSession;
     private readonly InferenceSession _decoderSession;
 
+    public SummaryRunner(string encoderPath, string decoderPath)
+    {
+        var opts = new SessionOptions { ExecutionMode = ExecutionMode.ORT_SEQUENTIAL };
+        _encoderSession = new InferenceSession(encoderPath, opts);
+        _decoderSession = new InferenceSession(decoderPath, opts);
+    }
+
+    /// <summary>Single ONNX file variant (encoder+decoder merged).</summary>
     public SummaryRunner(string modelPath)
     {
         var opts = new SessionOptions { ExecutionMode = ExecutionMode.ORT_SEQUENTIAL };

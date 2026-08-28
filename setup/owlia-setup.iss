@@ -31,6 +31,8 @@ AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\OWLIA
 DefaultGroupName=OWLIA
+SetupIconFile=..\assets\owlia.ico
+UninstallDisplayIcon={app}\{#MyAppExeName}
 OutputDir=Output
 OutputBaseFilename=owlia-setup-{#MyAppVersion}
 ; lzma2/ultra64 gives best compression for the app DLLs

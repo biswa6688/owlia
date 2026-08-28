@@ -43,17 +43,19 @@ A desktop application for offline speech-to-text transcription with speaker diar
 
 ## ONNX Models
 
-Models are downloaded on first use. Total size ~5.7GB.
+Models are downloaded on first use. Total size ~8.9GB (revised — Whisper and BART ship as encoder+decoder file pairs, not single merged files; see `docs/MEMORY.md`).
 
-| Model File | Size | Purpose |
-|---|---|---|
-| `silero_vad.onnx` | ~2MB | Voice activity detection |
-| `whisper-large-v3.onnx` | ~3.1GB | Speech-to-text + timestamps |
-| `pyannote-seg-3.0.onnx` | ~80MB | Speaker segmentation |
-| `wespeaker-ecapa-tdnn.onnx` | ~90MB | Speaker embedding |
-| `roberta-sentiment.onnx` | ~500MB | Sentiment analysis |
-| `bart-large-cnn.onnx` | ~1.6GB | Summarization |
-| `kokoro-v1.0.onnx` | ~300MB | Text-to-speech |
+| Model | Files | Size | Purpose |
+|---|---|---|---|
+| `silero_vad.onnx` | 1 | ~2.3MB | Voice activity detection |
+| `whisper-large-v3` | encoder+decoder, each with external `.onnx_data` weights (4 files) | ~6.2GB | Speech-to-text + timestamps |
+| `pyannote-seg-3.0.onnx` | 1 | ~5.7MB | Speaker segmentation |
+| `wespeaker-ecapa-tdnn.onnx` | 1 | ~23.7MB | Speaker embedding |
+| `roberta-sentiment.onnx` | 1 | ~476MB | Sentiment analysis |
+| `bart-cnn` | encoder+decoder (2 files) | ~1.7GB | Summarization |
+| `kokoro-v1.0.onnx` | 1 | ~310MB | Text-to-speech |
+
+**Planned engine swaps** (see `docs/MEMORY.md` for rationale): Whisper → Whisper.net (whisper.cpp), VAD+diarization → sherpa-onnx, Summarization → a small local LLM via LLamaSharp. Not yet implemented — models above are the current ONNX Runtime versions.
 
 ---
 

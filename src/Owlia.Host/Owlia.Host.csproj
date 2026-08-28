@@ -18,12 +18,17 @@
     <None Include="..\..\models\models.json"
           CopyToOutputDirectory="PreserveNewest"
           Link="models\models.json" />
+    <!-- Brand icon copied next to exe so Photino can load it as the window icon at runtime -->
+    <None Include="..\..\assets\owlia.ico"
+          CopyToOutputDirectory="PreserveNewest"
+          Link="owlia.ico" />
   </ItemGroup>
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>..\..\assets\owlia.ico</ApplicationIcon>
 
     <!-- Framework-dependent: installer downloads .NET 10 runtime if absent. -->
     <!-- Keeps published output ~30 MB instead of ~220 MB self-contained.    -->

@@ -116,10 +116,12 @@ public sealed class TranscriptService : ITranscriptService
         // ── 4. ASR (Whisper) ──────────────────────────────────────────────
         await _notifier.ProgressAsync(sessionId, "asr", 20);
         List<WhisperSegment> whisperSegments;
-        var whisperPath = _models.GetModelPath("whisper-large-v3");
-        if (File.Exists(whisperPath))
+        var whisperPaths = _models.GetModelPaths("whisper-large-v3");
+        if (whisperPaths.All(File.Exists))
         {
-            using var whisper = new WhisperRunner(whisperPath);
+            var encoderPath = whisperPaths.First(p => p.EndsWith("encoder_model.onnx"));
+            var decoderPath = whisperPaths.First(p => p.EndsWith("decoder_model.onnx"));
+            using var whisper = new WhisperRunner(encoderPath, decoderPath);
             whisperSegments = whisper.Transcribe(audio, vadSegments);
         }
         else
@@ -205,12 +207,19 @@ public sealed class TranscriptService : ITranscriptService
         // ── 8. Summarization ──────────────────────────────────────────────
         await _notifier.ProgressAsync(sessionId, "summary", 80);
         var fullText = string.Join(" ", whisperSegments.Select(w => w.Text));
-        var bartPath = _models.GetModelPath("bart-cnn");
+
+        // Speech percentage: fraction of total media duration covered by VAD
+        // speech segments — silence and non-speech noise are excluded by VAD.
+        var speechSeconds = vadSegments.Sum(v => v.EndSec - v.StartSec);
+        var speechPercentage = totalSec > 0 ? Math.Round(Math.Min(100.0, speechSeconds / totalSec * 100), 1) : 0;
+        var bartPaths = _models.GetModelPaths("bart-cnn");
 
         SummaryEntity summaryEntity;
-        if (File.Exists(bartPath) && !string.IsNullOrWhiteSpace(fullText))
+        if (bartPaths.All(File.Exists) && !string.IsNullOrWhiteSpace(fullText))
         {
-            using var summaryRunner = new SummaryRunner(bartPath);
+            var bartEncoderPath = bartPaths.First(p => p.EndsWith("encoder_model.onnx"));
+            var bartDecoderPath = bartPaths.First(p => p.EndsWith("decoder_model.onnx"));
+            using var summaryRunner = new SummaryRunner(bartEncoderPath, bartDecoderPath);
             var (summaryText, keywords, takeaways) = summaryRunner.Summarize(fullText);
             summaryEntity = new SummaryEntity
             {
@@ -219,6 +228,7 @@ public sealed class TranscriptService : ITranscriptService
                 SummaryText = summaryText,
                 KeywordsJson = JsonConvert.SerializeObject(keywords),
                 KeyTakeawaysJson = JsonConvert.SerializeObject(takeaways),
+                SpeechPercentage = speechPercentage,
                 CreatedAt = DateTime.UtcNow,
             };
         }
@@ -232,6 +242,7 @@ public sealed class TranscriptService : ITranscriptService
                 SummaryText = fullText.Length > 500 ? fullText[..500] + "…" : fullText,
                 KeywordsJson = JsonConvert.SerializeObject(keywords),
                 KeyTakeawaysJson = JsonConvert.SerializeObject(new List<string>()),
+                SpeechPercentage = speechPercentage,
                 CreatedAt = DateTime.UtcNow,
             };
         }

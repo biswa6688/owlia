@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.InteropServices;
 using log4net;
 using log4net.Config;
 using Microsoft.EntityFrameworkCore;
@@ -96,17 +97,48 @@ public static class Program
         log.Info("Kestrel listening at " + url);
 
         // ── Photino Window ────────────────────────────────────────────────────
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "owlia.ico");
         var window = new PhotinoWindow()
             .SetTitle("OWLIA — Offline Voice & Language Intelligence Analytics")
             .SetUseOsDefaultSize(false)
             .SetSize(new System.Drawing.Size(1440, 900))
             .Center()
-            .SetResizable(true)
-            .Load(url);
+            .SetResizable(true);
 
+        if (File.Exists(iconPath))
+            window.SetIconFile(iconPath);
+
+        window.WindowCreated += (_, _) => ApplyBrandTitleBar(window.WindowHandle);
+
+        window.Load(url);
         window.WaitForClose();
 
         log.Info("Window closed, shutting down host.");
         app.StopAsync().GetAwaiter().GetResult();
+    }
+
+    // ── Brand-colored title bar ─────────────────────────────────────────────
+    // Photino has no cross-platform titlebar-color API, so this uses the real
+    // Windows 11 DWM attribute directly. COLORREF is 0x00BBGGRR (reversed RGB).
+    // Owl palette: dark surface #2a1f1b (caption bg), warm-light #f5dbb8 (text).
+    private const int DwmwaUseImmersiveDarkMode = 20;
+    private const int DwmwaCaptionColor = 35;
+    private const int DwmwaTextColor = 36;
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int valueSize);
+
+    private static void ApplyBrandTitleBar(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        int darkMode = 1;
+        DwmSetWindowAttribute(hwnd, DwmwaUseImmersiveDarkMode, ref darkMode, sizeof(int));
+
+        int captionColor = 0x1B1F2A; // #2a1f1b
+        DwmSetWindowAttribute(hwnd, DwmwaCaptionColor, ref captionColor, sizeof(int));
+
+        int textColor = 0xB8DBF5; // #f5dbb8
+        DwmSetWindowAttribute(hwnd, DwmwaTextColor, ref textColor, sizeof(int));
     }
 }

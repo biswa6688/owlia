@@ -25,6 +25,7 @@ public sealed class SummaryService : ISummaryService
             Summary = entity.SummaryText,
             Keywords = JsonConvert.DeserializeObject<List<string>>(entity.KeywordsJson) ?? new(),
             KeyTakeaways = JsonConvert.DeserializeObject<List<string>>(entity.KeyTakeawaysJson) ?? new(),
+            SpeechPercentage = entity.SpeechPercentage,
         };
     }
 }

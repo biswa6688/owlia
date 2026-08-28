@@ -173,9 +173,36 @@ Status: `[ ]` todo · `[~]` in-progress · `[x]` done · `[!]` blocked
 
 ---
 
+## Epic 15 — Model Manifest & VAD Fixes (2026-08-28)
+
+| ID | Task | Notes |
+|---|---|---|
+| BL-140 | `[x]` Fix all 7 broken model manifest URLs | Every URL curl-verified before use; see `docs/MEMORY.md` |
+| BL-141 | `[x]` Multi-file model support (encoder+decoder, external `.onnx_data`) | `ModelManager.cs` rewritten, `files:[]` manifest schema |
+| BL-142 | `[x]` Fix `SileroVadRunner` v4→v5 input mismatch | Verified against real model's `InputMetadata` |
+| BL-143 | `[x]` Speech percentage metric (VAD-derived) | Backend done; `SummaryView.tsx` display — todo |
+| BL-144 | `[x]` Window icon (exe + Photino window) | `assets/owlia.ico` generated, wired both places |
+| BL-145 | `[x]` Brand-colored title bar | `DwmSetWindowAttribute`/`DWMWA_CAPTION_COLOR`, Win11 only |
+| BL-146 | `[x]` InnoSetup icon | `SetupIconFile` + `UninstallDisplayIcon` |
+
+---
+
+## Epic 16 — Engine Swaps (agreed 2026-08-28, not started)
+
+| ID | Task | Notes |
+|---|---|---|
+| BL-150 | `[ ]` Whisper → Whisper.net (whisper.cpp/GGML) | Retires `WhisperRunner`; real KV-cache decoding |
+| BL-151 | `[ ]` VAD + diarization → sherpa-onnx | Retires `SileroVadRunner`, `EmbeddingRunner`, `SegmentationRunner`, `SpeakerClusterer` |
+| BL-152 | `[ ]` TTS → sherpa-onnx Kokoro module | Consolidates onto the sherpa-onnx dependency already added for BL-151 |
+| BL-153 | `[ ]` Summarization → small local LLM via LLamaSharp | Retires `SummaryRunner`'s BART + placeholder tokenizer; prompted keywords/takeaways |
+| BL-154 | `[ ]` `SummaryView.tsx` speech-percentage display | Backend (BL-143) already exposes it via `/api/summary` |
+| BL-155 | `[ ]` Rebuild `models.json` manifest for new engines' model files | GGUF/GGML instead of ONNX for BL-150/151/153 |
+
+---
+
 ## Remaining
 
 - BL-132: Code signing (needs certificate — deferred)
-- E2E smoke test with real ONNX models (download silero + whisper first)
+- E2E smoke test with real models, ideally after Epic 16 lands (current ONNX runners work but are being replaced)
 - Optional: WaveSurfer.js integration (replaced with custom canvas — BL-066 done)
 - Optional: lazy code-splitting in Vite (chunk size warning — non-blocking)

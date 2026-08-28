@@ -1,212 +1,263 @@
-import { useEffect, useState } from 'react'
-import { DownloadIcon, CheckCircle, Circle, Loader2, Terminal } from '../../components/Icons/icons'
-import { motion } from 'framer-motion'
+import { useState, useEffect, useCallback } from 'react'
+import { cliApi, modelsApi, type CliStatus } from '../../api/client'
+import { useModelStore } from '../../store/modelStore'
+import { startHub, getHub } from '../../api/signalr'
 import { Nav } from '../../components/Nav/Nav'
-import { modelsApi, cliApi, type ModelStatus, type CliStatus } from '../../api/client'
-import { startHub } from '../../api/signalr'
 import { ProgressBar } from '../../components/UI/ProgressBar'
+import {
+  Terminal, CheckCircle, Copy, Check, Cpu,
+  DownloadIcon, Mic, Users, BarChart2, FileText, Volume2, Activity, AlertCircle, Loader2,
+} from '../../components/Icons/icons'
 
-function formatSize(bytes: number) {
-  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`
-  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(0)} MB`
-  return `${(bytes / 1e3).toFixed(0)} KB`
+const CLIS = [
+  { name: 'Claude Code', slug: 'claude' as const, icon: Terminal, color: 'var(--accent)', desc: 'Anthropic CLI agent', installCmd: 'npm install -g @anthropic-ai/claude-code' },
+  { name: 'OpenCode', slug: 'opencode' as const, icon: Cpu, color: 'var(--accent-copper)', desc: 'Open-source CLI agent', installCmd: 'npm install -g opencode' },
+] as const
+
+const MODEL_ICONS: Record<string, typeof Mic> = {
+  'silero-vad': Activity,
+  'whisper-large-v3': Mic,
+  'pyannote-seg': Users,
+  'wespeaker-ecapa': Users,
+  'roberta-sentiment': BarChart2,
+  'bart-cnn': FileText,
+  'kokoro-tts': Volume2,
 }
 
-interface DownloadProgress {
-  modelId: string
+function formatBytes(n: number) {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(1)} GB`
+  if (n >= 1e6) return `${(n / 1e6).toFixed(0)} MB`
+  if (n >= 1e3) return `${(n / 1e3).toFixed(0)} KB`
+  return `${n} B`
+}
+
+interface DownloadState {
   percent: number
-  complete?: boolean
+  error?: string
 }
 
-export function Download() {
-  const [models, setModels] = useState<ModelStatus[]>([])
-  const [loading, setLoading] = useState(true)
-  const [progress, setProgress] = useState<Record<string, DownloadProgress>>({})
-  const [downloading, setDownloading] = useState<Set<string>>(new Set())
-  const [cliStatus, setCliStatus] = useState<CliStatus | null>(null)
+export default function DownloadPage() {
+  const [cliData, setCliData]   = useState<CliStatus | null>(null)
+  const [copied, setCopied]     = useState<string | null>(null)
+  const { models, refresh } = useModelStore()
+  const [downloading, setDownloading] = useState<Record<string, DownloadState>>({})
 
-  useEffect(() => {
-    // Helper: ensure we never store a non-array into models state
-    const safeSetModels = (raw: unknown) => {
-      setModels(Array.isArray(raw) ? raw as ModelStatus[] : [])
-    }
-
-    Promise.all([
-      modelsApi.getAll().then(safeSetModels).catch(() => safeSetModels([])),
-      cliApi.status().then(setCliStatus).catch(() => {}),
-    ]).finally(() => setLoading(false))
-
-    // Connect SignalR for download progress — errors are non-fatal
-    let active = true
-    startHub().then(hub => {
-      if (!active) return
-      hub.off('ModelDownloadProgress')
-      hub.off('ModelDownloadError')
-
-      hub.on('ModelDownloadProgress', (data: DownloadProgress) => {
-        setProgress(prev => ({ ...prev, [data.modelId]: data }))
-        if (data.complete) {
-          setDownloading(prev => { const n = new Set(prev); n.delete(data.modelId); return n })
-          modelsApi.getAll().then(safeSetModels).catch(() => {})
-        }
-      })
-      hub.on('ModelDownloadError', (data: { modelId: string; error: string }) => {
-        setDownloading(prev => { const n = new Set(prev); n.delete(data.modelId); return n })
-        alert(`Download failed for ${data.modelId}: ${data.error}`)
-      })
-    }).catch(() => {}) // SignalR connection failure is non-fatal
-
-    return () => { active = false }
+  const fetchCli = useCallback(async () => {
+    try {
+      const s = await cliApi.status()
+      setCliData(s)
+    } catch { /* ok */ }
   }, [])
 
+  useEffect(() => { fetchCli(); refresh() }, [fetchCli, refresh])
+
+  useEffect(() => {
+    let cancelled = false
+
+    startHub().then(() => {
+      if (cancelled) return
+      const hub = getHub()
+
+      hub.on('ModelDownloadProgress', (data: { modelId: string; percent: number; complete?: boolean }) => {
+        if (data.complete) {
+          setDownloading(prev => {
+            const next = { ...prev }
+            delete next[data.modelId]
+            return next
+          })
+          refresh()
+        } else {
+          setDownloading(prev => ({ ...prev, [data.modelId]: { percent: data.percent } }))
+        }
+      })
+
+      hub.on('ModelDownloadError', (data: { modelId: string; error: string }) => {
+        setDownloading(prev => ({ ...prev, [data.modelId]: { percent: prev[data.modelId]?.percent ?? 0, error: data.error } }))
+      })
+    })
+
+    return () => {
+      cancelled = true
+      const hub = getHub()
+      hub.off('ModelDownloadProgress')
+      hub.off('ModelDownloadError')
+    }
+  }, [refresh])
+
+  const copyCmd = (cmd: string, slug: string) => {
+    navigator.clipboard.writeText(cmd)
+    setCopied(slug)
+    setTimeout(() => setCopied(null), 2000)
+  }
+
   const startDownload = async (modelId: string) => {
-    setDownloading(prev => new Set(prev).add(modelId))
-    setProgress(prev => ({ ...prev, [modelId]: { modelId, percent: 0 } }))
-    await modelsApi.download(modelId)
+    setDownloading(prev => ({ ...prev, [modelId]: { percent: 0 } }))
+    try {
+      await modelsApi.download(modelId)
+    } catch (err) {
+      setDownloading(prev => ({ ...prev, [modelId]: { percent: 0, error: err instanceof Error ? err.message : 'Failed to start download' } }))
+    }
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
-
+    <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)', overflow: 'hidden' }}>
       <Nav />
 
-      <main className="mx-auto max-w-4xl px-8 py-10">
+      <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '24px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ maxWidth: 640, width: '100%' }}>
 
-        {/* ── ONNX Models ── */}
-        <h1 className="mb-1 text-2xl font-bold">ONNX Models</h1>
-        <p className="mb-8 text-sm" style={{ color: 'var(--text-muted)' }}>
-          Download the models you need. Total ~5.7 GB. Each model unlocks a specific feature.
-        </p>
-
-        {loading ? (
-          <div className="flex items-center gap-2 py-10 text-sm" style={{ color: 'var(--text-muted)' }}>
-            <Loader2 size={16} className="animate-spin" /> Loading model status…
+          {/* Hero */}
+          <div style={{ marginBottom: 28 }}>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 6 }}>
+              Download <span style={{ color: 'var(--accent)' }}>ONNX models</span>
+            </h1>
+            <p style={{ fontSize: '0.82rem', opacity: 0.55 }}>
+              Required once, offline forever. Playground features unlock as their models finish.
+            </p>
           </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {(Array.isArray(models) ? models : []).map((model, i) => {
-              const isDownloading = downloading.has(model.id)
-              const prog = progress[model.id]
+
+          {/* Models list */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 36 }}>
+            {models.length === 0 && (
+              <p style={{ fontSize: '0.78rem', opacity: 0.5 }}>Loading model status…</p>
+            )}
+            {models.map(model => {
+              const Icon = MODEL_ICONS[model.id] ?? DownloadIcon
+              const state = downloading[model.id]
+              const isDownloading = !!state && !state.error
 
               return (
-                <motion.div
+                <div
                   key={model.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="rounded-2xl p-5"
-                  style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+                  style={{
+                    background: 'var(--surface)',
+                    border: `1px solid ${model.downloaded ? 'var(--accent)' : 'var(--border)'}`,
+                    borderRadius: 10, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8,
+                  }}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      {model.downloaded ? (
-                        <CheckCircle size={20} className="mt-0.5 shrink-0 text-green-500" />
-                      ) : (
-                        <Circle size={20} className="mt-0.5 shrink-0" style={{ color: 'var(--text-muted)' }} />
-                      )}
-                      <div>
-                        <p className="font-semibold">{model.feature}</p>
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                          {model.fileName} · {formatSize(model.sizeBytes)}
-                        </p>
-                      </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Icon size={16} style={{ color: 'var(--accent)' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: 700, fontSize: '0.85rem', lineHeight: 1.2 }}>{model.feature}</p>
+                      <p style={{ fontSize: '0.68rem', opacity: 0.45, fontFamily: 'monospace' }}>{model.id} · {formatBytes(model.sizeBytes)}</p>
                     </div>
 
-                    {!model.downloaded && !isDownloading && (
+                    {model.downloaded ? (
+                      <CheckCircle size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                    ) : isDownloading ? (
+                      <Loader2 size={16} className="animate-spin" style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                    ) : (
                       <button
                         type="button"
                         onClick={() => startDownload(model.id)}
-                        className="flex shrink-0 items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-all hover:brightness-110"
-                        style={{ background: 'var(--accent)', color: '#1a1210' }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          padding: '5px 12px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600,
+                          background: 'var(--accent)', color: '#1a1210', border: 'none', cursor: 'pointer',
+                        }}
                       >
                         <DownloadIcon size={12} /> Download
                       </button>
                     )}
-
-                    {model.downloaded && (
-                      <span className="shrink-0 text-xs font-medium text-green-500">Downloaded</span>
-                    )}
-
-                    {isDownloading && (
-                      <span className="flex shrink-0 items-center gap-1.5 text-xs" style={{ color: 'var(--accent)' }}>
-                        <Loader2 size={12} className="animate-spin" />
-                        {prog ? `${prog.percent.toFixed(0)}%` : 'Starting…'}
-                      </span>
-                    )}
                   </div>
 
-                  {isDownloading && prog && (
-                    <div className="mt-3">
-                      <ProgressBar value={prog.percent} color="var(--accent)" />
+                  {isDownloading && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <ProgressBar value={state.percent} color="var(--accent)" className="flex-1" />
+                      <span style={{ fontSize: '0.65rem', opacity: 0.5, minWidth: 32, textAlign: 'right' }}>{Math.round(state.percent)}%</span>
                     </div>
                   )}
-                </motion.div>
+
+                  {state?.error && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.68rem', color: '#ef4444' }}>
+                      <AlertCircle size={12} /> {state.error}
+                    </div>
+                  )}
+                </div>
               )
             })}
           </div>
-        )}
 
-        {/* ── CLI Integration ── */}
-        <div className="mt-14">
-          <h2 className="mb-1 text-xl font-bold">CLI Integration</h2>
-          <p className="mb-6 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Ask questions about your transcripts using Claude CLI or OpenCode CLI.
-          </p>
+          {/* CLI section */}
+          <div style={{ marginBottom: 12 }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 4 }}>
+              Install <span style={{ color: 'var(--accent)' }}>CLI</span> agents
+            </h2>
+            <p style={{ fontSize: '0.78rem', opacity: 0.5 }}>
+              Optional. Background agents that power the Ask AI tab.
+            </p>
+          </div>
 
-          <div className="flex flex-col gap-3">
-            {[
-              {
-                name: 'Claude CLI',
-                id: 'claude',
-                detected: cliStatus?.claude ?? false,
-                downloadUrl: 'https://claude.ai/download',
-                desc: 'Anthropic\'s official CLI — powerful reasoning about transcripts.',
-              },
-              {
-                name: 'OpenCode CLI',
-                id: 'opencode',
-                detected: cliStatus?.opencode ?? false,
-                downloadUrl: 'https://opencode.ai',
-                desc: 'OpenCode — fast, open-source AI coding & analysis CLI.',
-              },
-            ].map(cli => (
-              <div
-                key={cli.id}
-                className="flex items-center justify-between rounded-2xl p-5"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-              >
-                <div className="flex items-center gap-3">
-                  <Terminal size={20} style={{ color: 'var(--accent)' }} />
-                  <div>
-                    <p className="font-semibold">{cli.name}</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{cli.desc}</p>
+          {/* CLI Cards — 2-column grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 32 }}>
+            {CLIS.map(({ name, slug, icon: Icon, color, desc, installCmd }) => {
+              const installed = slug === 'claude' ? cliData?.claude : cliData?.opencode
+              const version = slug === 'claude' ? cliData?.claudeVersion : cliData?.opencodeVersion
+
+              return (
+                <div
+                  key={slug}
+                  style={{
+                    background: 'var(--surface)',
+                    border: `1px solid ${installed ? 'var(--accent)' : 'var(--border)'}`,
+                    borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10,
+                    transition: 'border-color 0.15s',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: `color-mix(in srgb, ${color} 10%, transparent)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Icon size={16} style={{ color }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: 700, fontSize: '0.85rem', lineHeight: 1.2 }}>{name}</p>
+                      <p style={{ fontSize: '0.68rem', opacity: 0.45 }}>{desc}</p>
+                    </div>
+                    {installed && <CheckCircle size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />}
+                  </div>
+
+                  {installed ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--accent)', fontWeight: 600 }}>Detected</span>
+                      {version && <span style={{ fontSize: '0.62rem', opacity: 0.35 }}>({version})</span>}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '0.68rem', opacity: 0.45 }}>Not detected — install manually</div>
+                  )}
+
+                  <div
+                    onClick={() => copyCmd(installCmd, slug)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', borderRadius: 6, background: 'var(--bg)', cursor: 'pointer', border: '1px solid var(--border)', transition: 'border-color 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = color }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+                  >
+                    <code style={{ flex: 1, fontSize: '0.62rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {installCmd}
+                    </code>
+                    {copied === slug ? <Check size={10} style={{ color: 'var(--accent)', flexShrink: 0 }} /> : <Copy size={10} style={{ opacity: 0.3, flexShrink: 0 }} />}
                   </div>
                 </div>
+              )
+            })}
+          </div>
 
-                {cli.detected ? (
-                  <span className="text-xs font-medium text-green-500 flex items-center gap-1">
-                    <CheckCircle size={14} /> Detected
-                  </span>
-                ) : (
-                  <a
-                    href={cli.downloadUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-all hover:brightness-110"
-                    style={{ border: '1px solid var(--border)', color: 'var(--text)' }}
-                  >
-                    <DownloadIcon size={12} /> Install
-                  </a>
-                )}
+          {/* FAQ */}
+          <div style={{ marginTop: 8 }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 14 }}>Questions?</h2>
+            {[
+              { q: 'Are CLIs required?', a: 'Optional. Owlia works fully offline. CLIs add background agent capabilities.' },
+              { q: 'Is it safe?', a: 'Yes. CLIs run locally, no data leaves your machine.' },
+              { q: 'Can I uninstall?', a: 'Yes. Remove with npm uninstall -g.' },
+            ].map(({ q, a }) => (
+              <div key={q} style={{ padding: '10px 0', borderTop: '1px solid var(--border)' }}>
+                <p style={{ fontWeight: 600, fontSize: '0.80rem', marginBottom: 2 }}>{q}</p>
+                <p style={{ fontSize: '0.78rem', opacity: 0.50 }}>{a}</p>
               </div>
             ))}
           </div>
-
-          <p className="mt-4 text-xs" style={{ color: 'var(--text-muted)' }}>
-            After installing, restart OWLIA so it can detect the CLI in your PATH.
-          </p>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

@@ -9,13 +9,10 @@
   },
   {
     "id": "whisper-large-v3",
-    "displayName": "Whisper Large v3",
+    "displayName": "Whisper Large v3 (whisper.cpp GGML)",
     "feature": "Speech-to-Text",
     "files": [
-      { "fileName": "whisper-large-v3/encoder_model.onnx", "sizeBytes": 412412, "sha256": "", "url": "https://huggingface.co/onnx-community/whisper-large-v3-ONNX/resolve/main/onnx/encoder_model.onnx" },
-      { "fileName": "whisper-large-v3/encoder_model.onnx_data", "sizeBytes": 2547875840, "sha256": "", "url": "https://huggingface.co/onnx-community/whisper-large-v3-ONNX/resolve/main/onnx/encoder_model.onnx_data" },
-      { "fileName": "whisper-large-v3/decoder_model.onnx", "sizeBytes": 1141794, "sha256": "", "url": "https://huggingface.co/onnx-community/whisper-large-v3-ONNX/resolve/main/onnx/decoder_model.onnx" },
-      { "fileName": "whisper-large-v3/decoder_model.onnx_data", "sizeBytes": 3626086400, "sha256": "", "url": "https://huggingface.co/onnx-community/whisper-large-v3-ONNX/resolve/main/onnx/decoder_model.onnx_data" }
+      { "fileName": "ggml-large-v3.bin", "sizeBytes": 3095033483, "sha256": "", "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin" }
     ]
   },
   {

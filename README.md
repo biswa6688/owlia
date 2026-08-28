@@ -10,7 +10,7 @@ A desktop application for offline speech-to-text transcription with speaker diar
 
 | Feature | Model | Status |
 |---|---|---|
-| Speech-to-Text | Whisper large-v3 (ONNX) | Planned |
+| Speech-to-Text | Whisper large-v3 (Whisper.net / whisper.cpp) | Planned |
 | Voice Activity Detection | Silero VAD (ONNX) | Planned |
 | Speaker Diarization | pyannote seg-3.0 + WeSpeaker (ONNX) | Planned |
 | Sentence Sentiment | RoBERTa sentiment (ONNX) | Planned |
@@ -43,19 +43,19 @@ A desktop application for offline speech-to-text transcription with speaker diar
 
 ## ONNX Models
 
-Models are downloaded on first use. Total size ~8.9GB (revised — Whisper and BART ship as encoder+decoder file pairs, not single merged files; see `docs/MEMORY.md`).
+Models are downloaded on first use. Total size ~5.6GB.
 
-| Model | Files | Size | Purpose |
-|---|---|---|---|
-| `silero_vad.onnx` | 1 | ~2.3MB | Voice activity detection |
-| `whisper-large-v3` | encoder+decoder, each with external `.onnx_data` weights (4 files) | ~6.2GB | Speech-to-text + timestamps |
-| `pyannote-seg-3.0.onnx` | 1 | ~5.7MB | Speaker segmentation |
-| `wespeaker-ecapa-tdnn.onnx` | 1 | ~23.7MB | Speaker embedding |
-| `roberta-sentiment.onnx` | 1 | ~476MB | Sentiment analysis |
-| `bart-cnn` | encoder+decoder (2 files) | ~1.7GB | Summarization |
-| `kokoro-v1.0.onnx` | 1 | ~310MB | Text-to-speech |
+| Model | Engine | Files | Size | Purpose |
+|---|---|---|---|---|
+| `silero_vad.onnx` | ONNX Runtime | 1 | ~2.3MB | Voice activity detection |
+| `ggml-large-v3.bin` | Whisper.net (whisper.cpp) | 1 | ~2.9GB | Speech-to-text + timestamps |
+| `pyannote-seg-3.0.onnx` | ONNX Runtime | 1 | ~5.7MB | Speaker segmentation |
+| `wespeaker-ecapa-tdnn.onnx` | ONNX Runtime | 1 | ~23.7MB | Speaker embedding |
+| `roberta-sentiment.onnx` | ONNX Runtime | 1 | ~476MB | Sentiment analysis |
+| `bart-cnn` | ONNX Runtime (encoder+decoder) | 2 | ~1.7GB | Summarization |
+| `kokoro-v1.0.onnx` | ONNX Runtime | 1 | ~310MB | Text-to-speech |
 
-**Planned engine swaps** (see `docs/MEMORY.md` for rationale): Whisper → Whisper.net (whisper.cpp), VAD+diarization → sherpa-onnx, Summarization → a small local LLM via LLamaSharp. Not yet implemented — models above are the current ONNX Runtime versions.
+**Remaining planned engine swaps** (see `docs/MEMORY.md` for rationale): VAD+diarization → sherpa-onnx, Summarization → a small local LLM via LLamaSharp. Whisper.net is done (2026-08-28); those two are not yet implemented.
 
 ---
 

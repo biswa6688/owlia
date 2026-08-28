@@ -88,15 +88,17 @@ Playground always dark: bg `#1a1210`, player `#0d0907`
 
 Manifest: `models/models.json`
 
-| ID | File | Feature | ~Size |
-|---|---|---|---|
-| `silero-vad` | `silero_vad.onnx` | VAD | 2MB |
-| `whisper-large-v3` | `whisper-large-v3.onnx` | ASR | 3.1GB |
-| `pyannote-seg` | `pyannote-seg-3.0.onnx` | Speaker seg | 80MB |
-| `wespeaker-ecapa` | `wespeaker-ecapa-tdnn.onnx` | Speaker embed | 90MB |
-| `roberta-sentiment` | `roberta-sentiment.onnx` | Sentiment | 500MB |
-| `bart-cnn` | `bart-large-cnn.onnx` | Summary | 1.6GB |
-| `kokoro-tts` | `kokoro-v1.0.onnx` | TTS | 300MB |
+| ID | Engine | File(s) | Feature | ~Size |
+|---|---|---|---|---|
+| `silero-vad` | ONNX Runtime | `silero_vad.onnx` | VAD | 2.3MB |
+| `whisper-large-v3` | **Whisper.net (whisper.cpp)** | `ggml-large-v3.bin` | ASR | 2.9GB |
+| `pyannote-seg` | ONNX Runtime | `pyannote-seg-3.0.onnx` | Speaker seg | 5.7MB |
+| `wespeaker-ecapa` | ONNX Runtime | `wespeaker-ecapa-tdnn.onnx` | Speaker embed | 23.7MB |
+| `roberta-sentiment` | ONNX Runtime | `roberta-sentiment.onnx` | Sentiment | 476MB |
+| `bart-cnn` | ONNX Runtime | `bart-cnn/encoder_model.onnx` + `decoder_model.onnx` | Summary | 1.7GB |
+| `kokoro-tts` | ONNX Runtime | `kokoro-v1.0.onnx` | TTS | 310MB |
+
+Manifest schema per entry: `{ id, displayName, feature, files: [{ fileName, sizeBytes, sha256, url }] }` — `files` always an array even for single-file models.
 
 `MODEL_REQUIREMENTS` in `modelStore.ts`:
 - `transcribe` → silero-vad + whisper-large-v3
@@ -191,7 +193,7 @@ dotnet run --project src\Owlia.Host
 - BL-132: Code signing (needs certificate)
 - E2E test with real ONNX models
 
-**Next action**: the 3 engine swaps below (Whisper.net, sherpa-onnx, LLamaSharp) are agreed but **not yet implemented** — current pipeline still runs the fixed-but-hand-rolled ONNX runners. After those land, re-verify: download models via Download page → drop an audio file in Playground → click Analyse → verify full pipeline.
+**Next action**: 2 of 3 engine swaps remain — VAD+diarization → sherpa-onnx, Summarization → LLamaSharp. Whisper → Whisper.net is **done** (2026-08-28, see below). After the remaining two land, re-verify: download models via Download page → drop an audio file in Playground → click Analyse → verify full pipeline end to end with all real models.
 
 ---
 
@@ -219,12 +221,24 @@ dotnet run --project src\Owlia.Host
 - `setup/owlia-setup.iss`: added `SetupIconFile=..\assets\owlia.ico` + `UninstallDisplayIcon={app}\{#MyAppExeName}` (shortcuts don't need explicit `IconFilename` — they inherit the exe's now-embedded icon resource automatically).
 - All 3 pieces screenshot-verified together in one running window: dark mahogany title bar, owl icon top-left, light title text.
 
-**Engine-swap plan agreed with user** (not yet implemented — next major work):
-1. **Whisper → Whisper.net** (`Whisper.net`+`Whisper.net.Runtime` NuGet, whisper.cpp/GGML bindings, confirmed real on nuget.org v1.9.1). Reason: real KV-cache decoding built into whisper.cpp instead of the recompute-from-scratch workaround above; GGUF quantized models are smaller/lower-RAM than fp32 ONNX.
-2. **VAD + diarization → sherpa-onnx** (`org.k2fsa.sherpa.onnx` NuGet, k2-fsa, v1.13.5 confirmed on nuget.org). Replaces `SileroVadRunner`, `EmbeddingRunner`, `SegmentationRunner`, and the hand-rolled `SpeakerClusterer.cs` (agglomerative clustering, never independently verified) with one tested toolkit. Also has Kokoro TTS support — user said "use whichever is best offline" for TTS, decided to consolidate onto sherpa-onnx's Kokoro module too rather than add a 4th separate dependency (kokoro-onnx / kokoro.cpp are alternatives but sherpa-onnx is already coming in for VAD+diarization).
-3. **Summarization → small local LLM via LLamaSharp** (SciSharp/LLamaSharp, llama.cpp binding, GGUF). Reason: current `SummaryRunner` tokenizer is a placeholder char-mapping hack, not real BART BPE — a small instruct model (e.g. Qwen2.5-1.5B-Instruct GGUF) with llama.cpp's correct decoding would beat it, and can generate keywords/takeaways via prompting instead of frequency counting. User confirmed this is fully offline (llama.cpp has zero network dependency) before agreeing.
+**Engine-swap plan agreed with user** — 3 swaps total, sequenced as separate backlog items (Epic 16: BL-150/151/152/153):
+1. **Whisper → Whisper.net — DONE (2026-08-28).** ✅
+2. **VAD + diarization → sherpa-onnx** (`org.k2fsa.sherpa.onnx` NuGet, k2-fsa, v1.13.5 confirmed on nuget.org) — **not started**. Replaces `SileroVadRunner`, `EmbeddingRunner`, `SegmentationRunner`, and the hand-rolled `SpeakerClusterer.cs` (agglomerative clustering, never independently verified) with one tested toolkit. Also has Kokoro TTS support — user said "use whichever is best offline" for TTS, decided to consolidate onto sherpa-onnx's Kokoro module too rather than add a 4th separate dependency.
+3. **Summarization → small local LLM via LLamaSharp** (SciSharp/LLamaSharp, llama.cpp binding, GGUF) — **not started**. Reason: current `SummaryRunner` tokenizer is a placeholder char-mapping hack, not real BART BPE. User confirmed this is fully offline before agreeing.
 
-This is a genuinely large follow-up: 3 new NuGet runtimes, new model downloads for each, rewiring `TranscriptService.cs`'s whole pipeline, retiring `WhisperRunner`/`SileroVadRunner`/`EmbeddingRunner`/`SegmentationRunner`/`SpeakerClusterer`/`SummaryRunner`, manifest changes again. Sequence it as its own set of backlog items rather than assuming it's done — it isn't yet.
+---
+
+## Session 2026-08-28 (later still) — Whisper.net swap complete (BL-150)
+
+Whisper large-v3 now runs on Whisper.net (whisper.cpp/GGML) instead of hand-rolled ONNX. Real API verified via DLL string extraction *before* writing code (same discipline as the Photino investigation): `WhisperFactory.FromPath(path)` → `.CreateBuilder().WithLanguage("auto").Build()` → `WhisperProcessor`, then `await foreach (var segment in processor.ProcessAsync(ReadOnlyMemory<float> samples, ct))` yielding `SegmentData { Start, End, Text, Probability }`. Compiled clean on the *first* attempt — the string-extraction-before-coding approach paid off again.
+
+`WhisperRunner.cs` rewritten (same public shape: `WhisperSegment`, one constructor now taking a single `modelPath` instead of encoder+decoder paths; `Transcribe` became `TranscribeAsync` since Whisper.net's API is async — `TranscriptService.cs`'s call site updated to `await`). Still chunks by VAD segment same as before (no pipeline redesign, minimal-diff swap).
+
+Manifest: `whisper-large-v3` collapsed from 4 files (~6.2GB, ONNX encoder+decoder+external data) to **1 file**, `ggml-large-v3.bin` (3,095,033,483 bytes ≈ 2.9GB), from `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin` (curl-verified 200, real Content-Length before writing to manifest — same discipline as the earlier URL-fixing session). Used the full fp32 model, not a quantized variant (`ggml-large-v3-q5_0.bin`, ~1.08GB, also verified real and available if RAM/disk becomes a concern later — 36GB budget makes fp32 the easy choice for now).
+
+**Functionally verified, not just compiled**: synthesized a real ~7s speech clip via Windows SAPI (`System.Speech.Synthesis.SpeechSynthesizer`, 16kHz mono 16-bit WAV — `System.Speech.AudioFormat.SpeechAudioFormatInfo(16000, Sixteen, Mono)`) saying "The quick brown fox jumps over the lazy dog. This is a test of the offline transcription pipeline." Ran it through the *actual* `WhisperFactory`/`ProcessAsync` code path (via the `ggml-tiny.bin` model, 77.7MB, for a fast test — same API surface as `ggml-large-v3.bin`, just smaller/less accurate) using a throwaway console app at `C:\Users\Administrator\Desktop\svg2ico` (same scratch project reused across this session for one-off verification tasks — SVG→ICO, ONNX introspection, this). Output: `[00:00:00->00:00:03] The Quick Brown Fox jumps over the lazy dog.` / `[00:00:03->00:00:07] This is a test of the offline transcription pipeline.` — correct text, correct timestamps. High confidence the same code path works with `ggml-large-v3.bin`; didn't download that (2.9GB) just to re-prove the already-proven code path.
+
+Native runtime note: `Whisper.net.Runtime` package drops `whisper.dll`/`ggml*.dll` into `runtimes/win-x64/` (and other RIDs) under the exe's output — resolved automatically by the .NET runtime host since `Owlia.Host.csproj` has `<RuntimeIdentifier>win-x64</RuntimeIdentifier>`. No manual wiring needed, verified present after build.
 
 ---
 

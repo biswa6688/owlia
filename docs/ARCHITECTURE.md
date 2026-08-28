@@ -84,7 +84,7 @@ owlia/
 │   │   ├── Vad/
 │   │   │   └── SileroVadRunner.cs
 │   │   ├── Asr/
-│   │   │   └── WhisperRunner.cs     # Whisper large-v3 ONNX
+│   │   │   └── WhisperRunner.cs     # Whisper large-v3 via Whisper.net (whisper.cpp)
 │   │   ├── Diarization/
 │   │   │   ├── SegmentationRunner.cs    # pyannote segmentation-3.0 ONNX
 │   │   │   └── EmbeddingRunner.cs       # WeSpeaker ECAPA-TDNN ONNX
@@ -162,21 +162,21 @@ Media File (audio/video)
 
 ---
 
-## ONNX Models
+## Models
 
-| Model | Purpose | Format | RAM | Source |
+| Model | Purpose | Engine / Format | RAM | Source |
 |---|---|---|---|---|
-| silero_vad.onnx | Voice Activity Detection | ONNX (v5, 1 file) | ~2.3MB | snakers4/silero-vad |
-| whisper-large-v3 | ASR + timestamps | ONNX (encoder+decoder, 4 files w/ external data) | ~6.2GB | onnx-community/whisper-large-v3-ONNX |
-| pyannote-segmentation-3.0 | Speaker segmentation | ONNX (1 file) | ~5.7MB | onnx-community/pyannote-segmentation-3.0 |
-| wespeaker-ecapa-tdnn | Speaker embedding | ONNX (1 file) | ~23.7MB | Wespeaker/wespeaker-ecapa-tdnn512-LM |
-| roberta-sentiment | Sentiment (0-100) | ONNX (1 file) | ~476MB | Xenova/twitter-roberta-base-sentiment-latest |
-| bart-cnn | Summarization | ONNX (encoder+decoder, 2 files) | ~1.7GB | Xenova/bart-large-cnn |
-| kokoro-v1.0 | TTS (high quality) | ONNX (1 file) | ~310MB | onnx-community/Kokoro-82M-v1.0-ONNX |
+| silero_vad.onnx | Voice Activity Detection | ONNX Runtime (v5, 1 file) | ~2.3MB | snakers4/silero-vad |
+| ggml-large-v3.bin | ASR + timestamps | Whisper.net / whisper.cpp (GGML, 1 file) | ~2.9GB | ggerganov/whisper.cpp |
+| pyannote-segmentation-3.0 | Speaker segmentation | ONNX Runtime (1 file) | ~5.7MB | onnx-community/pyannote-segmentation-3.0 |
+| wespeaker-ecapa-tdnn | Speaker embedding | ONNX Runtime (1 file) | ~23.7MB | Wespeaker/wespeaker-ecapa-tdnn512-LM |
+| roberta-sentiment | Sentiment (0-100) | ONNX Runtime (1 file) | ~476MB | Xenova/twitter-roberta-base-sentiment-latest |
+| bart-cnn | Summarization | ONNX Runtime (encoder+decoder, 2 files) | ~1.7GB | Xenova/bart-large-cnn |
+| kokoro-v1.0 | TTS (high quality) | ONNX Runtime (1 file) | ~310MB | onnx-community/Kokoro-82M-v1.0-ONNX |
 
-**Total model RAM: ~8.9GB** — well within 36GB constraint.
+**Total model RAM: ~5.6GB** — well within 36GB constraint.
 
-**Note:** the original manifest (facebook/openai/pyannote/wenet-e2e/hexgrad/cardiffnlp source URLs) was entirely broken — those orgs don't host ONNX exports at those paths. Fixed 2026-08-28 to the `onnx-community`/`Xenova`/`Wespeaker` mirror orgs, which do. See `docs/MEMORY.md` for the full investigation and the planned Whisper.net/sherpa-onnx/LLamaSharp engine swaps.
+**Note:** the original manifest (facebook/openai/pyannote/wenet-e2e/hexgrad/cardiffnlp source URLs) was entirely broken — those orgs don't host ONNX exports at those paths. Fixed 2026-08-28 to the `onnx-community`/`Xenova`/`Wespeaker` mirror orgs, which do. Whisper was then swapped off ONNX entirely onto Whisper.net (whisper.cpp) — simpler (1 file vs. 4) and avoids a KV-cache decode loop that would otherwise have to be hand-implemented. VAD+diarization → sherpa-onnx and Summarization → a small local LLM (LLamaSharp) are still planned. See `docs/MEMORY.md` for the full investigation.
 
 ---
 

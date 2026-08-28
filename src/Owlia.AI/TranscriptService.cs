@@ -116,13 +116,11 @@ public sealed class TranscriptService : ITranscriptService
         // ── 4. ASR (Whisper) ──────────────────────────────────────────────
         await _notifier.ProgressAsync(sessionId, "asr", 20);
         List<WhisperSegment> whisperSegments;
-        var whisperPaths = _models.GetModelPaths("whisper-large-v3");
-        if (whisperPaths.All(File.Exists))
+        var whisperPath = _models.GetModelPath("whisper-large-v3");
+        if (File.Exists(whisperPath))
         {
-            var encoderPath = whisperPaths.First(p => p.EndsWith("encoder_model.onnx"));
-            var decoderPath = whisperPaths.First(p => p.EndsWith("decoder_model.onnx"));
-            using var whisper = new WhisperRunner(encoderPath, decoderPath);
-            whisperSegments = whisper.Transcribe(audio, vadSegments);
+            using var whisper = new WhisperRunner(whisperPath);
+            whisperSegments = await whisper.TranscribeAsync(audio, vadSegments, ct);
         }
         else
         {

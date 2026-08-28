@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — Semantic Ve
 
 ## [Unreleased]
 
+### Changed — Session 7 (Whisper → Whisper.net)
+
+- Speech-to-text now runs on Whisper.net (whisper.cpp/GGML) instead of hand-rolled ONNX. `WhisperRunner` rewritten around the real `WhisperFactory`/`WhisperProcessorBuilder`/`WhisperProcessor` API (verified via DLL string extraction before writing any code, then confirmed by a clean compile). Model manifest simplified from 4 files/~6.2GB (ONNX encoder+decoder+external data) to 1 file/~3.1GB (`ggml-large-v3.bin`). Functionally verified end-to-end with a real synthesized speech clip (Windows SAPI) transcribed through `ggml-tiny.bin` — correct text and timestamps, not just a compile check.
+
 ### Added — Session 6 (pause/resume/cancel, update check, display names)
 
 - Download page: pause, resume, and cancel a model download. Resume uses real HTTP `Range` requests continuing an existing `.tmp` file (byte-verified: paused at 101.8MB, resumed to 114MB — not a restart). Multi-file models (Whisper, BART) resume at the file level too — a completed encoder is skipped when resuming a paused decoder.

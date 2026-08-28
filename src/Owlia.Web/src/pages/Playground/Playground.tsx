@@ -21,7 +21,7 @@ export function Playground() {
   const [midTab, setMidTab]         = useState<MidTab>('transcript')
   const [subtitle, setSubtitle]     = useState('')
   const [leftPct, setLeftPct]       = useState(33)
-  const [midPct, setMidPct]         = useState(34)
+  const [midPct, setMidPct]         = useState(44)
   const containerRef                = useRef<HTMLDivElement>(null)
   const dragging                    = useRef<'left' | 'mid' | null>(null)
   const dragStartX                  = useRef(0)

@@ -24,6 +24,12 @@ public class SessionRepository : ISessionRepository
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task UpdateAsync(SessionEntity session, CancellationToken ct = default)
+    {
+        _db.Sessions.Update(session);
+        await _db.SaveChangesAsync(ct);
+    }
+
     public async Task DeleteAsync(string id, CancellationToken ct = default)
     {
         var entity = await _db.Sessions.FirstOrDefaultAsync(x => x.Id == id, ct);

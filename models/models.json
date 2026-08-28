@@ -1,0 +1,58 @@
+[
+  {
+    "id": "silero-vad",
+    "fileName": "silero_vad.onnx",
+    "feature": "Voice Activity Detection",
+    "sizeBytes": 2000000,
+    "sha256": "",
+    "url": "https://github.com/snakers4/silero-vad/raw/master/files/silero_vad.onnx"
+  },
+  {
+    "id": "whisper-large-v3",
+    "fileName": "whisper-large-v3.onnx",
+    "feature": "Speech-to-Text",
+    "sizeBytes": 3100000000,
+    "sha256": "",
+    "url": "https://huggingface.co/openai/whisper-large-v3/resolve/main/onnx/model.onnx"
+  },
+  {
+    "id": "pyannote-seg",
+    "fileName": "pyannote-seg-3.0.onnx",
+    "feature": "Speaker Segmentation",
+    "sizeBytes": 80000000,
+    "sha256": "",
+    "url": "https://huggingface.co/pyannote/segmentation-3.0/resolve/main/pytorch_model.bin"
+  },
+  {
+    "id": "wespeaker-ecapa",
+    "fileName": "wespeaker-ecapa-tdnn.onnx",
+    "feature": "Speaker Embedding",
+    "sizeBytes": 90000000,
+    "sha256": "",
+    "url": "https://huggingface.co/wenet-e2e/wespeaker-voxceleb-resnet34-LM/resolve/main/wespeaker.onnx"
+  },
+  {
+    "id": "roberta-sentiment",
+    "fileName": "roberta-sentiment.onnx",
+    "feature": "Sentiment Analysis",
+    "sizeBytes": 500000000,
+    "sha256": "",
+    "url": "https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment-latest/resolve/main/onnx/model.onnx"
+  },
+  {
+    "id": "bart-cnn",
+    "fileName": "bart-large-cnn.onnx",
+    "feature": "Summarization",
+    "sizeBytes": 1600000000,
+    "sha256": "",
+    "url": "https://huggingface.co/facebook/bart-large-cnn/resolve/main/onnx/model.onnx"
+  },
+  {
+    "id": "kokoro-tts",
+    "fileName": "kokoro-v1.0.onnx",
+    "feature": "Text-to-Speech",
+    "sizeBytes": 300000000,
+    "sha256": "",
+    "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/kokoro-v1_0.onnx"
+  }
+]

@@ -2,11 +2,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Owlia.Core\Owlia.Core.csproj" />
+    <ProjectReference Include="..\Owlia.Data\Owlia.Data.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.2.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.29.0" />
     <PackageReference Include="NAudio" Version="3.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
 
   <PropertyGroup>

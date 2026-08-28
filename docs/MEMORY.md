@@ -11,16 +11,17 @@ This file preserves full project context so AI models do not need to re-read the
 - **Platform**: Windows 10/11 x64
 - **Repo**: https://github.com/biswa6688/owlia.git
 - **Brand icon**: `assets/owlia.svg` (owl, mahogany/amber/gold palette)
+- **Build**: `./build.ps1` (PowerShell) — vite build + dotnet publish + InnoSetup
 
 ---
 
 ## Architecture Summary
 
-Single executable (.exe) that:
-1. Launches Photino.NET window
-2. Starts ASP.NET Core Minimal API on a random local port
+Single executable (.exe):
+1. Photino.NET window
+2. ASP.NET Core Minimal API on random localhost port (`http://127.0.0.1:0`)
 3. Serves built React app from `wwwroot/`
-4. Communicates via HTTP + SignalR (localhost only)
+4. HTTP + SignalR (localhost only)
 
 ---
 
@@ -30,196 +31,159 @@ Single executable (.exe) that:
 #6e4f44  primary (dark mahogany brown)
 #875d54  primary-mid
 #d0805f  copper
-#f2a35b  amber (main accent)
+#f2a35b  amber (main accent)       → --accent
 #feb903  gold (highlight)
-#f5dbb8  warm-light (light backgrounds)
+#f5dbb8  warm-light (light bg)
 #303232  near-black
 #878787  gray
 ```
 
-Dark mode: bg `#1a1210`, surface `#2a1f1b`
-Light mode: bg `#fef9f4`, surface `#fff5eb`
+Dark mode bg `#1a1210`, surface `#2a1f1b`  
+Light mode bg `#fef9f4`, surface `#fff5eb`  
+Playground always dark: bg `#1a1210`, player `#0d0907`
 
 ---
 
 ## C# Projects
 
-| Project | Description | Key Dependencies |
-|---|---|---|
-| `Owlia.Host` | Executable. Photino window. Minimal API. SignalR hub. | Photino.NET, AspNetCore, SignalR, log4net, Newtonsoft.Json |
-| `Owlia.Core` | Interfaces + domain models. No external deps. | — |
-| `Owlia.Data` | SQLite via EF Core. Repositories. | EFCore.Sqlite, EFCore.Design |
-| `Owlia.AI` | ONNX runners. Audio processing. | OnnxRuntime, NAudio |
+| Project | Key Dependencies |
+|---|---|
+| `Owlia.Host` | Photino.NET, AspNetCore, SignalR, log4net, Newtonsoft.Json |
+| `Owlia.Core` | — (no external deps) |
+| `Owlia.Data` | EFCore.Sqlite, EFCore.Design |
+| `Owlia.AI` | OnnxRuntime 1.29, NAudio 3.0.1, SignalR.Core 1.2, Newtonsoft.Json |
 
 ---
 
 ## React Frontend
 
-- **Framework**: React 18 + TypeScript + Vite
-- **State**: Zustand
-- **Routing**: React Router v6
-- **Styling**: Tailwind CSS
-- **Animation**: Framer Motion
-- **Icons**: Lucide React
-- **Audio viz**: WaveSurfer.js
-- **Real-time**: @microsoft/signalr
+- React 19 + TypeScript + Vite 8 + Tailwind v4 (CSS-first)
+- Zustand: `themeStore`, `playgroundStore`, `modelStore`
+- Router: React Router v7
+- Real-time: @microsoft/signalr (singleton in `src/api/signalr.ts`)
+- HTTP: axios (`src/api/client.ts` — full typed API)
 
 ### Pages
-- `/` → FlashScreen (5s auto-redirect)
-- `/landing` → Landing (product showcase)
-- `/playground` → Playground (media player + AI results)
-- `/history` → History (past sessions)
-- `/download` → Download (model + CLI management)
+- `/` → FlashScreen (5s animated)
+- `/landing` → Landing (hero, features, how-it-works, FAQ, footer)
+- `/playground` → Playground (player + spectrum + tabs: Transcript / Sentiment / Summary / Ask AI)
+- `/history` → History (session cards, restore, delete)
+- `/download` → Download (model status + CLI detection)
+
+### Key Components
+- `VoiceSpectrum.tsx` — canvas WebAudio API visualizer (frequency bars, animated)
+- `CliPanel.tsx` — full chat UI (Claude/OpenCode, SignalR streaming, Shift+Enter)
+- `ModelGate.tsx` — wraps features; shows "download required" banner if models missing
+- `TranscriptList.tsx`, `SentimentView.tsx`, `SummaryView.tsx`
+- `ProgressBar.tsx`, `Badge.tsx`, `ThemeToggle.tsx`
+
+### Stores
+- `themeStore.ts` — `light`/`dark`/`system`; persisted to localStorage `owlia-theme`
+- `playgroundStore.ts` — media, sessionId, stage/progress, segments, sentiment, summary, currentTimeMs, activeSegmentIndex; `speakerColor()` hue cache
+- `modelStore.ts` — `ModelStatus[]`; `isReady(feature)` checks required models; `MODEL_REQUIREMENTS` map
 
 ---
 
 ## AI Models (ONNX)
 
-All stored in `models/` directory. Manifest at `models/models.json`.
+Manifest: `models/models.json`
 
-| ID | File | Purpose | ~Size |
+| ID | File | Feature | ~Size |
 |---|---|---|---|
 | `silero-vad` | `silero_vad.onnx` | VAD | 2MB |
-| `whisper-large-v3` | `whisper-large-v3.onnx` | ASR + timestamps | 3.1GB |
-| `pyannote-seg` | `pyannote-seg-3.0.onnx` | Speaker segmentation | 80MB |
-| `wespeaker-ecapa` | `wespeaker-ecapa-tdnn.onnx` | Speaker embedding | 90MB |
-| `roberta-sentiment` | `roberta-sentiment.onnx` | Sentiment 0-100 | 500MB |
-| `bart-cnn` | `bart-large-cnn.onnx` | Summarization | 1.6GB |
+| `whisper-large-v3` | `whisper-large-v3.onnx` | ASR | 3.1GB |
+| `pyannote-seg` | `pyannote-seg-3.0.onnx` | Speaker seg | 80MB |
+| `wespeaker-ecapa` | `wespeaker-ecapa-tdnn.onnx` | Speaker embed | 90MB |
+| `roberta-sentiment` | `roberta-sentiment.onnx` | Sentiment | 500MB |
+| `bart-cnn` | `bart-large-cnn.onnx` | Summary | 1.6GB |
 | `kokoro-tts` | `kokoro-v1.0.onnx` | TTS | 300MB |
+
+`MODEL_REQUIREMENTS` in `modelStore.ts`:
+- `transcribe` → silero-vad + whisper-large-v3
+- `diarize` → pyannote-seg + wespeaker-ecapa
+- `sentiment` → roberta-sentiment
+- `summary` → bart-cnn
+- `tts` → kokoro-tts
 
 ---
 
 ## Database (SQLite)
 
-File: `data/owlia.db`
+File: `data/owlia.db` (relative to exe)
 
 ```
-Sessions   (Id, FileName, Duration, FilePath, CreatedAt)
-Segments   (Id, SessionId, Speaker, StartMs, EndMs, Text, SentimentScore, SentimentLabel, Confidence)
-Summaries  (Id, SessionId, SummaryText, Keywords JSON, KeyTakeaways JSON, CreatedAt)
+Sessions  (Id, FileName, FilePath, DurationSeconds, SpeakerCount, CreatedAt)
+Segments  (Id, SessionId, Speaker, StartMs, EndMs, Text, SentimentScore, SentimentLabel, Confidence)
+Summaries (Id, SessionId, SummaryText, KeywordsJson, KeyTakeawaysJson, CreatedAt)
 ```
+
+Repository: `ISessionRepository` with `GetByIdAsync`, `GetAllAsync`, `AddAsync`, `UpdateAsync`, `DeleteAsync`, `AddSegmentsAsync`, `GetSegmentsAsync`, `UpsertSummaryAsync`, `GetSummaryAsync`.
 
 ---
 
 ## API Surface
 
 ```
-POST   /api/media/analyze          → { sessionId }
-GET    /api/transcript/{id}        → SpeakerSegment[]
+GET    /api/health
+POST   /api/media/analyze          { filePath } → { sessionId }
+GET    /api/transcript/{id}        → TranscriptResult
 GET    /api/sentiment/{id}         → SentimentResult
 GET    /api/summary/{id}           → SummaryResult
 GET    /api/models                 → ModelStatus[]
-POST   /api/models/download        → start download (progress via SignalR)
+POST   /api/models/download        { modelId } → 202
 GET    /api/history                → Session[]
-DELETE /api/history/{id}
-POST   /api/tts                    → audio stream
+DELETE /api/history/{id}           → 204
+POST   /api/tts                    { text, voice? } → audio/wav
 GET    /api/cli/status             → { claude: bool, opencode: bool }
-POST   /api/cli/query              → stream CLI response via SignalR
+POST   /api/cli/query              { sessionId, question, cli } → 202
 
-WS     /hub/progress               ← all streaming events
+WS     /hub/progress
 ```
 
 ### SignalR Events
-- `ModelDownloadProgress` → `{ modelId, percent, bytesDownloaded, totalBytes }`
-- `TranscriptSegment` → SpeakerSegment (streaming)
-- `AnalysisProgress` → `{ stage, percent }` (vad/asr/diarize/sentiment/summary)
-- `AnalysisComplete` → `{ sessionId }`
-- `CliResponse` → `{ chunk }`
+- `ModelDownloadProgress` / `ModelDownloadError`
+- `AnalysisProgress` → `{ stage, percent }` (audio/vad/asr/diarization/sentiment/saving/summary/done)
+- `TranscriptSegment` → SpeakerSegment (streamed live)
+- `AnalysisComplete` / `AnalysisError`
+- `CliResponse` → `{ chunk?, done? }`
+- `CliError` → `{ error }`
+
+Hub groups: `session:{sessionId}` — clients call `JoinSession(sessionId)`.
 
 ---
 
-## Media Player UI
+## Runtime Conventions
 
-Full-viewport player. Controls bottom bar (VLC-style):
-- Left: play/pause, ±10s skip, speed selector
-- Center: time / seek bar / duration
-- Right: volume, subtitle toggle, fullscreen
-
-Subtitle overlay: bottom center, semi-transparent bg, current segment text.
-
-Media list: sidebar or overlay panel — add files, drag onto player.
-
-Voice spectrum: canvas WebAudio API visualizer above controls.
+- `AppContext.BaseDirectory` — paths for data/, logs/, models/ all relative here
+- Kestrel `http://127.0.0.1:0` — random port read back via `IServerAddressesFeature`
+- NAudio 3.x: `ISampleProvider.Read(Span<float>)` (not 3-arg array)
+- `dotnet-ef` tool: `C:\Users\Administrator\.dotnet\tools\dotnet-ef.exe`
+- All projects target `net10.0`; solution `owlia.slnx`
 
 ---
 
-## Transcript Tab
+## Build
 
-- List of `SpeakerSegment` items
-- Each row: speaker color badge | timestamp | text | sentiment emoji icon
-- Active segment (current playback time) highlighted: amber border + tinted bg
-- Click row → seek player to segment start
-- Auto-scroll to active row
+```powershell
+# Development
+cd src\Owlia.Web; npm run build   # → wwwroot/
+dotnet run --project src\Owlia.Host
 
----
-
-## Sentiment Tab
-
-- Per-speaker card:
-  - Speaker name + overall score
-  - Progress bar gradient: 0-40 red, 41-60 yellow, 61-100 green
-- Sentence timeline: horizontal bar, each segment a colored block proportional to duration
-
----
-
-## Summary Tab
-
-- Summary paragraph
-- Keywords: pill badges
-- Key takeaways: numbered list
-
----
-
-## CLI Integration
-
-- Detect `claude` and `opencode` in PATH (via `where` on Windows)
-- UI: CLI selector dropdown + status indicator
-- If not found: show download links for each
-- Context: serialize session to JSON → write temp file → pass `--file` to CLI
-- Cache temp file path per sessionId → no re-read
-- Stream CLI stdout → SignalR `CliResponse` → frontend chat display
-
----
-
-## InnoSetup Distribution
-
-Script: `setup/owlia-setup.iss`
-- Bundles: .NET 10 runtime check, app files, ffmpeg.exe, VC++ redist
-- Does NOT bundle models (8GB → downloaded at runtime)
-- Creates Start Menu shortcut + optional Desktop shortcut
-- Uninstaller included
+# Release installer
+.\build.ps1                       # full: vite + publish + InnoSetup
+.\build.ps1 -SkipInstaller        # skip InnoSetup
+.\build.ps1 -SkipFrontend         # skip vite (if wwwroot already built)
+```
 
 ---
 
 ## Backlog Status
 
-See `docs/BACKLOG.md` for full task list.
+**All epics complete** except:
+- BL-132: Code signing (needs certificate)
+- E2E test with real ONNX models
 
-Current: BL-001 through BL-007 complete, plus BL-110/BL-111/BL-112 (theme system) done early since it was trivial alongside the frontend scaffold. `Owlia.Host` runs end-to-end: log4net initializes, EF Core migrates SQLite, Kestrel binds a random localhost port, Photino window loads the REAL built React app (`npm run build` → `src/Owlia.Host/wwwroot/` → served, verified via `curl`). Smoke-tested twice via `dotnet run` — confirmed working, process killed after each test.
-BL-008 done: committed (`66b6b49`) and force-pushed to `main` on `biswa6688/owlia`.
-
-**IMPORTANT — repo history note:** before this push, `origin/main` already had 8 unrelated commits (tip `ad2f6a0`, all dated 2026-08-28) from a different, more advanced OWLIA build — different architecture (`Owlia.App`/`Owlia.Ipc`/`Owlia.Media`/`Owlia.Nlp`/`Owlia.Speech`/`Owlia.AiCli` projects, `frontend/` folder, Inno Setup installer already wired, more docs — 137 files vs this scaffold's 63). That was very likely a separate concurrent session/agent working the same request. The user was shown this conflict explicitly and chose to force-push and discard it rather than merge. That old tip is not referenced by any branch now but may still be fetchable by SHA (`ad2f6a0`) until GitHub garbage-collects it — if the user ever asks to recover something from "the other version," check there first before saying it's gone.
-
-Next: Epic 5 (Flash screen animation polish — current stub has the 5s auto-nav but no owl glow/letter-reveal animation yet).
-
-### Frontend scaffold (Owlia.Web) — BL-004 detail
-- Vite config: `build.outDir` set to `../Owlia.Host/wwwroot`, `emptyOutDir: true` — `npm run build` from `src/Owlia.Web` drops straight into the host's static folder, no copy step needed.
-- Tailwind v4 via `@tailwindcss/vite` plugin — CSS-first config, no `tailwind.config.js`. Owl palette defined as `@theme` tokens (`--color-owl-*`) in `src/index.css`, plus semantic `--bg`/`--surface`/`--text`/`--accent` vars that swap for dark mode.
-- Theme: `useThemeStore` (Zustand, `src/store/themeStore.ts`) persists `light`/`dark`/`system` to `localStorage` key `owlia-theme`; applies via `data-theme` attribute on `<html>`. `system` removes the attribute and lets the `prefers-color-scheme` media query in `index.css` take over.
-- Router: `react-router-dom` `BrowserRouter` in `App.tsx`, 5 routes matching the 5 pages (`/`, `/landing`, `/playground`, `/history`, `/download`). All pages beyond Flash are placeholder stubs — real implementation is Epics 6-11.
-- Brand icon copied to `src/Owlia.Web/public/owlia.svg` (same file as `assets/owlia.svg`, used as favicon + in-app logo).
-- `src/Owlia.Host/wwwroot/` is gitignored (generated) — never hand-edit or commit it; always regenerate via `npm run build`.
-
-Note: SDK installed is .NET 10 (10.0.301) only, not .NET 9 — all projects target `net10.0`. Solution file is `owlia.slnx` (new .NET 10 XML sln format), not `.sln`.
-
-### Runtime conventions (Owlia.Host/Program.cs)
-- Photino.NET namespace is `Photino.NET` (NOT `PhotinoNET` — verified by inspecting the DLL, don't assume).
-- `log4net.config` copied to output dir via `<None CopyToOutputDirectory="PreserveNewest">`; loaded explicitly via `XmlConfigurator.Configure(LogManager.GetRepository(Assembly.GetExecutingAssembly()), new FileInfo(...))` — no `[assembly: XmlConfigurator]` auto-load in .NET Core.
-- Logs write to `logs/owlia.log` **relative to `AppContext.BaseDirectory`** (next to the exe) — NOT the repo-root `logs/` folder. Same convention applies to `data/owlia.db`. This is consistent between dev (`bin/Debug/net10.0/`) and published builds (next to the installed exe).
-- DbContext class is `OwliaDbContext` (note: earlier ARCHITECTURE.md draft had a typo `OwniaDbContext` — corrected).
-- Kestrel binds `http://127.0.0.1:0` (OS-assigned random port); actual URL read back via `IServerAddressesFeature` after `app.RunAsync()`, then passed to `PhotinoWindow.Load(url)`.
-- EF migrations live in `src/Owlia.Data/Migrations/`; design-time factory is `OwliaDbContextFactory` (`IDesignTimeDbContextFactory<OwliaDbContext>`) so `dotnet ef migrations add` works without needing Owlia.Host DI wired up.
-- `dotnet-ef` installed as global tool (not on PATH this session — invoke via `C:\Users\Administrator\.dotnet\tools\dotnet-ef.exe` or add `~/.dotnet/tools` to PATH).
+**Next action**: Download models via Download page → drop an audio file in Playground → click Analyse → verify full pipeline.
 
 ---
 
@@ -227,10 +191,13 @@ Note: SDK installed is .NET 10 (10.0.301) only, not .NET 9 — all projects targ
 
 | Decision | Rationale |
 |---|---|
-| Photino.NET over Electron | ~5MB overhead vs ~150MB; no Node.js runtime; native window |
-| ONNX Runtime over Python | Single .NET process; no Python dep; predictable memory |
-| Whisper large-v3 | Best accuracy; fits 36GB RAM budget |
-| SQLite not SQL Server | Zero config; portable; sufficient for local single-user app |
-| Zustand not Redux | Simpler API; less boilerplate; sufficient for this app |
-| SignalR not WebSocket raw | Built-in reconnect; typed events; easy .NET integration |
-| ffmpeg bundled | Universal audio/video support without NAudio codec limitations |
+| `IPipelineNotifier` | Breaks circular dep Owlia.AI ↔ Owlia.Host |
+| NAudio Span API | NAudio 3.x changed signature from `(float[], int, int)` to `Span<float>` |
+| Canvas WebAudio visualizer | Direct Web Audio API — no WaveSurfer.js dependency needed |
+| `ModelGate` component | Wraps any UI section; reads `modelStore` — one place to change gating logic |
+| `modelStore` singleton | Loaded once on app start; refreshed after analysis completes |
+| `playgroundStore.reset()` called on new file | Revokes ObjectURL, clears all analysis state |
+| Session restore on Playground mount | If `sessionId` set but `segments.length === 0`, fetches all data from API |
+| CLI context cached per sessionId | `_contextCache` dict — no re-read per query; temp file written once |
+| InnoSetup no models | Models are ~5.7 GB — always downloaded at runtime |
+| `build.ps1` `-SkipInstaller` | Allows building without InnoSetup installed |

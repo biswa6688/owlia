@@ -20,9 +20,10 @@ export function ThemeToggle() {
           onClick={() => setMode(optionMode)}
           className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
             mode === optionMode
-              ? 'bg-[var(--accent)] text-[var(--color-owl-near-black)]'
+              ? 'bg-[var(--accent)]'
               : 'text-[var(--text-muted)] hover:text-[var(--text)]'
           }`}
+          style={mode === optionMode ? { color: '#303232' } : {}}
         >
           <Icon size={16} strokeWidth={2} />
         </button>

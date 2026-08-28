@@ -14,6 +14,10 @@
 
   <ItemGroup>
     <None Include="log4net.config" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Copy models manifest so the app can read it without needing the repo layout -->
+    <None Include="..\..\models\models.json"
+          CopyToOutputDirectory="PreserveNewest"
+          Link="models\models.json" />
   </ItemGroup>
 
   <PropertyGroup>

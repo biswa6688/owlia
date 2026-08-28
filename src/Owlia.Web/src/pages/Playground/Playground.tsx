@@ -12,30 +12,37 @@ import { ModelGate } from '../../components/UI/ModelGateBanner'
 import { Nav } from '../../components/Nav/Nav'
 import type { SpeakerSegment, SentimentResult, SummaryResult } from '../../api/client'
 
-type RightTab = 'transcript' | 'summary' | 'cli'
+type MidTab = 'transcript' | 'summary'
 
 export function Playground() {
   const store = usePlaygroundStore()
   const { refresh: refreshModels, isReady } = useModelStore()
 
-  const [rightTab, setRightTab] = useState<RightTab>('transcript')
-  const [subtitle, setSubtitle] = useState('')
-  const [colPct, setColPct]     = useState(50)
-  const containerRef           = useRef<HTMLDivElement>(null)
-  const isDraggingCol          = useRef(false)
+  const [midTab, setMidTab]         = useState<MidTab>('transcript')
+  const [subtitle, setSubtitle]     = useState('')
+  const [leftPct, setLeftPct]       = useState(33)
+  const [midPct, setMidPct]         = useState(34)
+  const containerRef                = useRef<HTMLDivElement>(null)
+  const dragging                    = useRef<'left' | 'mid' | null>(null)
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
-      if (!isDraggingCol.current || !containerRef.current) return
+      if (!dragging.current || !containerRef.current) return
       const rect = containerRef.current.getBoundingClientRect()
       const pct = ((e.clientX - rect.left) / rect.width) * 100
-      setColPct(Math.min(80, Math.max(20, pct)))
+      if (dragging.current === 'left') {
+        setLeftPct(Math.min(60, Math.max(15, pct)))
+      } else {
+        const available = 100 - leftPct
+        const midFromLeft = pct - leftPct
+        setMidPct(Math.min(available - 10, Math.max(10, midFromLeft)))
+      }
     }
-    const onUp = () => { isDraggingCol.current = false; document.body.style.cursor = ''; document.body.style.userSelect = '' }
+    const onUp = () => { dragging.current = null; document.body.style.cursor = ''; document.body.style.userSelect = '' }
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
     return () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
-  }, [])
+  }, [leftPct])
 
   useEffect(() => { refreshModels() }, [refreshModels])
 
@@ -119,23 +126,33 @@ export function Playground() {
       ? Math.max(...store.sentiment.timeline.map(s => s.endMs))
       : 0
 
-  const RIGHT_TABS: { id: RightTab; label: string }[] = [
+  const MID_TABS: { id: MidTab; label: string }[] = [
     { id: 'transcript', label: 'Transcript' },
     { id: 'summary',    label: 'Summary'    },
-    { id: 'cli',        label: '🤖 Ask AI'  },
   ]
+
+  const rightPct = Math.max(10, 100 - leftPct - midPct)
+
+  const Divider = ({ which }: { which: 'left' | 'mid' }) => (
+    <div
+      onMouseDown={() => { dragging.current = which; document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none' }}
+      style={{ width: 5, flexShrink: 0, cursor: 'col-resize', background: 'var(--border)', transition: 'background 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onMouseEnter={e => { if (!dragging.current) e.currentTarget.style.background = 'var(--accent)' }}
+      onMouseLeave={e => { if (!dragging.current) e.currentTarget.style.background = 'var(--border)' }}
+    >
+      <div style={{ width: 1, height: 24, background: 'var(--text)', opacity: 0.15, borderRadius: 1 }} />
+    </div>
+  )
 
   return (
     <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)', overflow: 'hidden' }}>
       <Nav />
 
-      {/* ── Two-column body ────────────────────────────────────────────── */}
+      {/* ── Three-column body ───────────────────────────────────────────── */}
       <div ref={containerRef} style={{ flex: '1 1 0', minHeight: 0, display: 'flex', overflow: 'hidden' }}>
 
-        {/* ── Left column: Player + Sentiment ──────────────────────────── */}
-        <div style={{ width: `${colPct}%`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-          {/* Inline media player */}
+        {/* ── Col 1: Player + Sentiment ─────────────────────────────────── */}
+        <div style={{ width: `${leftPct}%`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
             <InlinePlayer
               mediaUrl={store.mediaUrl}
@@ -151,8 +168,6 @@ export function Playground() {
               progress={isAnalysing ? store.progress : undefined}
             />
           </div>
-
-          {/* Sentiment section */}
           <div style={{ flex: '1 1 0', minHeight: 0, overflow: 'auto', padding: '12px 16px' }}>
             <ModelGate feature="sentiment">
               <SentimentView sentiment={store.sentiment} totalDurationMs={totalDurMs} />
@@ -160,28 +175,19 @@ export function Playground() {
           </div>
         </div>
 
-        {/* ── Draggable divider ──────────────────────────────────────────── */}
-        <div
-          onMouseDown={() => { isDraggingCol.current = true; document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none' }}
-          style={{ width: 5, flexShrink: 0, cursor: 'col-resize', background: 'var(--border)', transition: 'background 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onMouseEnter={e => { if (!isDraggingCol.current) e.currentTarget.style.background = 'var(--accent)' }}
-          onMouseLeave={e => { if (!isDraggingCol.current) e.currentTarget.style.background = 'var(--border)' }}
-        >
-          <div style={{ width: 1, height: 24, background: 'var(--text)', opacity: 0.15, borderRadius: 1 }} />
-        </div>
+        <Divider which="left" />
 
-        {/* ── Right column: Tabs ───────────────────────────────────────── */}
-        <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {/* Tab bar */}
+        {/* ── Col 2: Transcript / Summary tabs ──────────────────────────── */}
+        <div style={{ width: `${midPct}%`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', flexShrink: 0 }}>
-            {RIGHT_TABS.map(t => (
+            {MID_TABS.map(t => (
               <button
-                key={t.id} type="button" onClick={() => setRightTab(t.id)}
+                key={t.id} type="button" onClick={() => setMidTab(t.id)}
                 style={{
                   padding: '8px 14px', fontSize: '0.75rem', fontWeight: 600,
                   background: 'none', border: 'none', cursor: 'pointer',
-                  color:        rightTab === t.id ? 'var(--accent)' : 'var(--text-muted)',
-                  borderBottom: rightTab === t.id ? '2px solid var(--accent)' : '2px solid transparent',
+                  color:        midTab === t.id ? 'var(--accent)' : 'var(--text-muted)',
+                  borderBottom: midTab === t.id ? '2px solid var(--accent)' : '2px solid transparent',
                   transition: 'color 0.15s', whiteSpace: 'nowrap',
                 }}
               >
@@ -189,10 +195,8 @@ export function Playground() {
               </button>
             ))}
           </div>
-
-          {/* Tab content */}
           <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-            {rightTab === 'transcript' && (
+            {midTab === 'transcript' && (
               <ModelGate feature="transcribe">
                 <TranscriptList segments={store.segments} activeIndex={store.activeSegmentIndex} onSeek={ms => {
                   store.setCurrentTimeMs(ms)
@@ -200,13 +204,19 @@ export function Playground() {
                 }} />
               </ModelGate>
             )}
-            {rightTab === 'summary' && (
+            {midTab === 'summary' && (
               <ModelGate feature="summary">
                 <SummaryView summary={store.summary} />
               </ModelGate>
             )}
-            {rightTab === 'cli' && <CliPanel sessionId={store.sessionId} />}
           </div>
+        </div>
+
+        <Divider which="mid" />
+
+        {/* ── Col 3: Ask AI chat ─────────────────────────────────────────── */}
+        <div style={{ width: `${rightPct}%`, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <CliPanel sessionId={store.sessionId} />
         </div>
       </div>
     </div>

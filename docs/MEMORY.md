@@ -90,13 +90,15 @@ Manifest: `models/models.json`
 
 | ID | Engine | File(s) | Feature | ~Size |
 |---|---|---|---|---|
-| `silero-vad` | ONNX Runtime | `silero_vad.onnx` | VAD | 2.3MB |
+| `silero-vad` | **sherpa-onnx** | `silero_vad.onnx` | VAD | 644KB |
 | `whisper-large-v3` | **Whisper.net (whisper.cpp)** | `ggml-large-v3.bin` | ASR | 2.9GB |
-| `pyannote-seg` | ONNX Runtime | `pyannote-seg-3.0.onnx` | Speaker seg | 5.7MB |
-| `wespeaker-ecapa` | ONNX Runtime | `wespeaker-ecapa-tdnn.onnx` | Speaker embed | 23.7MB |
+| `pyannote-seg` | **sherpa-onnx** | `pyannote-seg-3.0.onnx` | Speaker seg | 5.7MB |
+| `wespeaker-ecapa` | **sherpa-onnx** | `wespeaker_en_voxceleb_resnet34_LM.onnx` | Speaker embed | 25.3MB |
 | `roberta-sentiment` | ONNX Runtime | `roberta-sentiment.onnx` | Sentiment | 476MB |
 | `bart-cnn` | ONNX Runtime | `bart-cnn/encoder_model.onnx` + `decoder_model.onnx` | Summary | 1.7GB |
 | `kokoro-tts` | ONNX Runtime | `kokoro-v1.0.onnx` | TTS | 310MB |
+
+Note: `id` `wespeaker-ecapa` and its old `fileName` are historical — the actual model is WeSpeaker **ResNet34-LM**, not ECAPA-TDNN (no sherpa-onnx-compatible ECAPA-TDNN export was found; ResNet34-LM is what sherpa-onnx's own release actually ships). Didn't rename the `id` to avoid touching every `GetModelPath("wespeaker-ecapa")` call site for a cosmetic fix — `displayName` in the manifest is accurate ("WeSpeaker ResNet34-LM (sherpa-onnx)"), only the internal id string is stale.
 
 Manifest schema per entry: `{ id, displayName, feature, files: [{ fileName, sizeBytes, sha256, url }] }` — `files` always an array even for single-file models.
 
@@ -193,7 +195,7 @@ dotnet run --project src\Owlia.Host
 - BL-132: Code signing (needs certificate)
 - E2E test with real ONNX models
 
-**Next action**: 2 of 3 engine swaps remain — VAD+diarization → sherpa-onnx, Summarization → LLamaSharp. Whisper → Whisper.net is **done** (2026-08-28, see below). After the remaining two land, re-verify: download models via Download page → drop an audio file in Playground → click Analyse → verify full pipeline end to end with all real models.
+**Next action**: 1 of 3 engine swaps remains — Summarization → LLamaSharp. Whisper → Whisper.net **done**, VAD+diarization → sherpa-onnx **done** (both 2026-08-28, see below). TTS → sherpa-onnx Kokoro is deferred, not "remaining work to pick up casually" — it's blocked on adding archive-extraction support to `ModelManager` (see BL-152 note). After LLamaSharp lands, re-verify: download models via Download page → drop an audio file in Playground → click Analyse → verify full pipeline end to end with all real models.
 
 ---
 
@@ -239,6 +241,28 @@ Manifest: `whisper-large-v3` collapsed from 4 files (~6.2GB, ONNX encoder+decode
 **Functionally verified, not just compiled**: synthesized a real ~7s speech clip via Windows SAPI (`System.Speech.Synthesis.SpeechSynthesizer`, 16kHz mono 16-bit WAV — `System.Speech.AudioFormat.SpeechAudioFormatInfo(16000, Sixteen, Mono)`) saying "The quick brown fox jumps over the lazy dog. This is a test of the offline transcription pipeline." Ran it through the *actual* `WhisperFactory`/`ProcessAsync` code path (via the `ggml-tiny.bin` model, 77.7MB, for a fast test — same API surface as `ggml-large-v3.bin`, just smaller/less accurate) using a throwaway console app at `C:\Users\Administrator\Desktop\svg2ico` (same scratch project reused across this session for one-off verification tasks — SVG→ICO, ONNX introspection, this). Output: `[00:00:00->00:00:03] The Quick Brown Fox jumps over the lazy dog.` / `[00:00:03->00:00:07] This is a test of the offline transcription pipeline.` — correct text, correct timestamps. High confidence the same code path works with `ggml-large-v3.bin`; didn't download that (2.9GB) just to re-prove the already-proven code path.
 
 Native runtime note: `Whisper.net.Runtime` package drops `whisper.dll`/`ggml*.dll` into `runtimes/win-x64/` (and other RIDs) under the exe's output — resolved automatically by the .NET runtime host since `Owlia.Host.csproj` has `<RuntimeIdentifier>win-x64</RuntimeIdentifier>`. No manual wiring needed, verified present after build.
+
+---
+
+## Session 2026-08-28 (yet later) — sherpa-onnx swap complete (BL-151); Kokoro/TTS deferred (BL-152)
+
+VAD and speaker diarization now run on `org.k2fsa.sherpa.onnx` (v1.13.5) instead of hand-rolled ONNX. **Discovery method**: DLL string extraction found the real namespace (`SherpaOnnx`) and class names first, then a throwaway console app (`C:\Users\Administrator\Desktop\svg2ico`, reused all session) with a `Dump(Type t)` reflection helper printed every public ctor/method/property/field of each real class *before any implementation code was written* — this is more reliable than guessing from docs, since the installed package version (1.13.5) turned out to be *behind* what's shown in the project's own `master`-branch example code (e.g. `OfflineSpeakerSegmentationPyannoteModelConfig.WindowShiftRatio` exists in the GitHub example but not in 1.13.5 — compiler caught it immediately, removed it). **Lesson: verify against the actually-installed package version, not the latest docs/examples** — they can drift.
+
+Real API confirmed (namespace `SherpaOnnx`):
+- `VoiceActivityDetector(VadModelConfig, float bufferSeconds)` — streaming-style: `AcceptWaveform(float[])` feeds a chunk, `IsSpeechDetected()`/`IsEmpty()`/`Front()`/`Pop()` drain completed `SpeechSegment{Start (samples), Samples}`, `Flush()` at the end for anything still buffered. Chunk size must match `VadModelConfig.SileroVad.WindowSize` (512, same convention as the old hand-rolled v5 code).
+- `OfflineSpeakerDiarization(OfflineSpeakerDiarizationConfig)` — `Process(float[] fullAudio)` → `OfflineSpeakerDiarizationSegment[]{Start,End,Speaker}` in **one call**. Does segmentation (pyannote) + embedding (WeSpeaker) + clustering internally — no separate stages needed. `config.Clustering.NumClusters` when speaker count is known; `config.Clustering.Threshold` (used 0.5f) when it isn't — our case, since the app never asks the user how many speakers are in the recording.
+- Real usage patterns for both were cross-checked against the project's own `dotnet-examples/vad-non-streaming-asr-paraformer/Program.cs` and `dotnet-examples/offline-speaker-diarization/Program.cs` (fetched raw source via `curl`, not summarized) — not reconstructed from memory.
+
+**Code changes**: `SileroVadRunner.cs` rewritten around `VoiceActivityDetector` (same public shape: `VadSegment{StartSec,EndSec}`, `Run(float[] audio)` — `TranscriptService.cs` needed zero changes at its call site). `EmbeddingRunner.cs`, `SegmentationRunner.cs`, `SpeakerClusterer.cs` **deleted** — replaced by one new `DiarizationRunner.cs` wrapping `OfflineSpeakerDiarization`. `TranscriptService.cs`'s diarization step redesigned: previously extracted one embedding per *transcript* segment and clustered those; now calls `DiarizationRunner.Diarize(audio)` once over the whole clip, then for each transcript segment picks the diarization segment with the largest time-overlap and takes its `Speaker` index (`$"Speaker {n}"`). This is a real behavior change, not just a refactor — diarization boundaries no longer have to align with Whisper's segment boundaries, which is more correct (a diarization segment can span or split differently than a transcript segment).
+
+**Manifest**: model sources switched from the generic ONNX-community exports (which worked for the old hand-rolled ONNX Runtime code but aren't guaranteed to match what sherpa-onnx's C++ layer expects) to sherpa-onnx's own verified-compatible releases:
+- `silero-vad`: `https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx` (643,854 bytes — much smaller than the raw upstream v5 file; sherpa-onnx handles whatever internal format/version details itself, we no longer need to track v4-vs-v5 input tensor shapes at all).
+- `pyannote-seg`: `https://huggingface.co/csukuangfj/sherpa-onnx-pyannote-segmentation-3-0/resolve/main/model.onnx` (5,992,913 bytes) — `csukuangfj` is the sherpa-onnx maintainer's own HF org, mirroring release assets as browsable individual files.
+- `wespeaker-ecapa` (id unchanged, see note above table): `https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/wespeaker_en_voxceleb_resnet34_LM.onnx` (26,530,550 bytes) — exact filename confirmed via the GitHub *releases API* (`/repos/k2-fsa/sherpa-onnx/releases/tags/speaker-recongition-models` → assets list), not guessed. Note the release tag itself has a typo (`recongition`) baked into the real, permanent URL — don't "fix" it, that would break the link.
+
+**Functionally verified against real audio, not just compiled**: same `System.Speech.Synthesis` technique as the Whisper.net verification, 3 sentences with pauses between them (~11.7s total). VAD found exactly 3 segments matching the 3 sentences, 77.4% speech (correctly excluding the silence/pauses). Diarization independently found 3 segments with closely matching boundaries, all correctly labeled as a single consistent speaker (`speaker_0`) — correct, since it was one synthesized voice throughout.
+
+**BL-152 (TTS → sherpa-onnx Kokoro) deferred, not done**: `OfflineTtsKokoroModelConfig` needs `Model` (onnx) + `Voices` (voices.bin) + `Tokens` (tokens.txt) + `DataDir` (an `espeak-ng-data/` directory of many files) — sherpa-onnx only distributes this as a `.tar.bz2` release archive (e.g. `kokoro-multi-lang-v1_0.tar.bz2`), never as browsable individual files the way the VAD/diarization models are. The current per-file `models.json` manifest + `ModelManager` have no concept of "download and extract an archive," and a whole directory of espeak phoneme data doesn't fit the `files: [...]` flat-list shape anyway. This needs its own design work (archive support, or representing a directory as N manifest file entries with a shared destination folder) — didn't rush a shaky implementation. Current single-file `kokoro-onnx` ONNX Runtime TTS runner is untouched and still works.
 
 ---
 

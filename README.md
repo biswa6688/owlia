@@ -11,8 +11,8 @@ A desktop application for offline speech-to-text transcription with speaker diar
 | Feature | Model | Status |
 |---|---|---|
 | Speech-to-Text | Whisper large-v3 (Whisper.net / whisper.cpp) | Planned |
-| Voice Activity Detection | Silero VAD (ONNX) | Planned |
-| Speaker Diarization | pyannote seg-3.0 + WeSpeaker (ONNX) | Planned |
+| Voice Activity Detection | Silero VAD (sherpa-onnx) | Planned |
+| Speaker Diarization | pyannote seg-3.0 + WeSpeaker (sherpa-onnx) | Planned |
 | Sentence Sentiment | RoBERTa sentiment (ONNX) | Planned |
 | Summarization | BART-large-CNN (ONNX) | Planned |
 | Text-to-Speech | Kokoro v1.0 (ONNX) | Planned |
@@ -41,21 +41,23 @@ A desktop application for offline speech-to-text transcription with speaker diar
 
 ---
 
-## ONNX Models
+## Models
 
 Models are downloaded on first use. Total size ~5.6GB.
 
 | Model | Engine | Files | Size | Purpose |
 |---|---|---|---|---|
-| `silero_vad.onnx` | ONNX Runtime | 1 | ~2.3MB | Voice activity detection |
+| `silero_vad.onnx` | sherpa-onnx | 1 | ~644KB | Voice activity detection |
 | `ggml-large-v3.bin` | Whisper.net (whisper.cpp) | 1 | ~2.9GB | Speech-to-text + timestamps |
-| `pyannote-seg-3.0.onnx` | ONNX Runtime | 1 | ~5.7MB | Speaker segmentation |
-| `wespeaker-ecapa-tdnn.onnx` | ONNX Runtime | 1 | ~23.7MB | Speaker embedding |
+| `pyannote-seg-3.0.onnx` | sherpa-onnx | 1 | ~5.7MB | Speaker segmentation |
+| `wespeaker_en_voxceleb_resnet34_LM.onnx` | sherpa-onnx | 1 | ~25.3MB | Speaker embedding |
 | `roberta-sentiment.onnx` | ONNX Runtime | 1 | ~476MB | Sentiment analysis |
 | `bart-cnn` | ONNX Runtime (encoder+decoder) | 2 | ~1.7GB | Summarization |
 | `kokoro-v1.0.onnx` | ONNX Runtime | 1 | ~310MB | Text-to-speech |
 
-**Remaining planned engine swaps** (see `docs/MEMORY.md` for rationale): VAD+diarization → sherpa-onnx, Summarization → a small local LLM via LLamaSharp. Whisper.net is done (2026-08-28); those two are not yet implemented.
+Diarization (segmentation + embedding + clustering) runs as one sherpa-onnx `OfflineSpeakerDiarization` call rather than 3 separate stages.
+
+**Remaining planned engine swap**: Summarization → a small local LLM via LLamaSharp (not yet implemented). TTS → sherpa-onnx's Kokoro module is deferred — its model ships as a directory bundle (`model.onnx` + `voices.bin` + `tokens.txt` + `espeak-ng-data/`) only distributed as a `.tar.bz2` archive, which the current per-file manifest doesn't support yet.
 
 ---
 

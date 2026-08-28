@@ -79,15 +79,14 @@ owlia/
 │   │       ├── ISessionRepository.cs
 │   │       └── SessionRepository.cs
 │   │
-│   ├── Owlia.AI/                # ONNX runners (stateless, thread-safe)
+│   ├── Owlia.AI/                # model runners (stateless, thread-safe)
 │   │   ├── ModelManager.cs      # Download, validate, cache paths
 │   │   ├── Vad/
-│   │   │   └── SileroVadRunner.cs
+│   │   │   └── SileroVadRunner.cs   # sherpa-onnx VoiceActivityDetector
 │   │   ├── Asr/
 │   │   │   └── WhisperRunner.cs     # Whisper large-v3 via Whisper.net (whisper.cpp)
 │   │   ├── Diarization/
-│   │   │   ├── SegmentationRunner.cs    # pyannote segmentation-3.0 ONNX
-│   │   │   └── EmbeddingRunner.cs       # WeSpeaker ECAPA-TDNN ONNX
+│   │   │   └── DiarizationRunner.cs # sherpa-onnx OfflineSpeakerDiarization (pyannote seg + WeSpeaker embed + clustering, one call)
 │   │   ├── Sentiment/
 │   │   │   └── SentimentRunner.cs   # RoBERTa sentiment ONNX
 │   │   ├── Summary/
@@ -149,12 +148,12 @@ Media File (audio/video)
 [Whisper large-v3]  → text + word-level timestamps per segment
     │
     ▼
-[Speaker Diarization]
-    ├── SegmentationRunner  → speaker change boundaries
-    └── EmbeddingRunner     → speaker identity clustering
+[DiarizationRunner]  → speaker segments { start, end, speaker } — one call,
+                        segmentation+embedding+clustering handled internally
     │
     ▼
-[Merge]             → SpeakerSegment[] { speaker, start, end, text }
+[Merge]             → each transcript segment gets the speaker of whichever
+                        diarization segment overlaps it most
     │
     ├──▶ [SentimentRunner]  → per-segment score 0-100
     └──▶ [SummaryRunner]    → summary + keywords + key takeaways
@@ -166,17 +165,17 @@ Media File (audio/video)
 
 | Model | Purpose | Engine / Format | RAM | Source |
 |---|---|---|---|---|
-| silero_vad.onnx | Voice Activity Detection | ONNX Runtime (v5, 1 file) | ~2.3MB | snakers4/silero-vad |
+| silero_vad.onnx | Voice Activity Detection | sherpa-onnx (1 file) | ~644KB | k2-fsa/sherpa-onnx releases |
 | ggml-large-v3.bin | ASR + timestamps | Whisper.net / whisper.cpp (GGML, 1 file) | ~2.9GB | ggerganov/whisper.cpp |
-| pyannote-segmentation-3.0 | Speaker segmentation | ONNX Runtime (1 file) | ~5.7MB | onnx-community/pyannote-segmentation-3.0 |
-| wespeaker-ecapa-tdnn | Speaker embedding | ONNX Runtime (1 file) | ~23.7MB | Wespeaker/wespeaker-ecapa-tdnn512-LM |
+| pyannote-segmentation-3.0 | Speaker segmentation | sherpa-onnx (1 file) | ~5.7MB | csukuangfj/sherpa-onnx-pyannote-segmentation-3-0 |
+| wespeaker_en_voxceleb_resnet34_LM | Speaker embedding | sherpa-onnx (1 file) | ~25.3MB | k2-fsa/sherpa-onnx releases |
 | roberta-sentiment | Sentiment (0-100) | ONNX Runtime (1 file) | ~476MB | Xenova/twitter-roberta-base-sentiment-latest |
 | bart-cnn | Summarization | ONNX Runtime (encoder+decoder, 2 files) | ~1.7GB | Xenova/bart-large-cnn |
 | kokoro-v1.0 | TTS (high quality) | ONNX Runtime (1 file) | ~310MB | onnx-community/Kokoro-82M-v1.0-ONNX |
 
 **Total model RAM: ~5.6GB** — well within 36GB constraint.
 
-**Note:** the original manifest (facebook/openai/pyannote/wenet-e2e/hexgrad/cardiffnlp source URLs) was entirely broken — those orgs don't host ONNX exports at those paths. Fixed 2026-08-28 to the `onnx-community`/`Xenova`/`Wespeaker` mirror orgs, which do. Whisper was then swapped off ONNX entirely onto Whisper.net (whisper.cpp) — simpler (1 file vs. 4) and avoids a KV-cache decode loop that would otherwise have to be hand-implemented. VAD+diarization → sherpa-onnx and Summarization → a small local LLM (LLamaSharp) are still planned. See `docs/MEMORY.md` for the full investigation.
+**Note:** the original manifest (facebook/openai/pyannote/wenet-e2e/hexgrad/cardiffnlp source URLs) was entirely broken — those orgs don't host ONNX exports at those paths. Fixed 2026-08-28. Whisper then swapped off ONNX entirely onto Whisper.net (whisper.cpp) — simpler (1 file vs. 4) and avoids a KV-cache decode loop that would otherwise have to be hand-implemented. VAD + diarization then swapped to sherpa-onnx — `OfflineSpeakerDiarization` does segmentation+embedding+clustering in one call, retiring 3 hand-rolled files (`EmbeddingRunner`, `SegmentationRunner`, `SpeakerClusterer`) for 1. Both swaps functionally verified against real audio, not just compiled. Summarization → a small local LLM (LLamaSharp) is still planned; TTS → sherpa-onnx Kokoro is deferred (its model ships as a directory bundle only distributed as a `.tar.bz2` archive — doesn't fit the current per-file manifest). See `docs/MEMORY.md` for the full investigation.
 
 ---
 

@@ -1,136 +1,70 @@
-using Microsoft.ML.OnnxRuntime;
-using Microsoft.ML.OnnxRuntime.Tensors;
+using SherpaOnnx;
 
 namespace Owlia.AI.Vad;
 
 /// <summary>
-/// Runs Silero VAD (silero_vad.onnx) on a 16 kHz mono float[] audio array.
-/// Returns a list of voice-active segments (start/end in seconds).
+/// Voice activity detection via sherpa-onnx's VoiceActivityDetector (wraps
+/// Silero VAD internally — handles model-version input/state details itself,
+/// unlike the previous hand-rolled ONNX Runtime implementation).
 /// </summary>
 public sealed class SileroVadRunner : IDisposable
 {
     private const int SampleRate = 16000;
-    private const int WindowSizeSamples = 512;  // Silero VAD v5 chunk size
-    private const int ContextSamples = 64;       // v5 convolutional front-end lookback
-    private const int StateDim = 128;            // v5 combined recurrent state size
-    private const float Threshold = 0.5f;
-    private const float MinSilenceDurationSec = 0.3f;
-    private const float SpeechPadSec = 0.1f;
+    private const int WindowSize = 512;
 
-    private readonly InferenceSession _session;
+    private readonly VoiceActivityDetector _vad;
 
     public SileroVadRunner(string modelPath)
     {
-        var opts = new SessionOptions { ExecutionMode = ExecutionMode.ORT_SEQUENTIAL };
-        _session = new InferenceSession(modelPath, opts);
+        var config = new VadModelConfig();
+        config.SileroVad.Model = modelPath;
+        config.SileroVad.Threshold = 0.5f;
+        config.SileroVad.MinSilenceDuration = 0.3f;
+        config.SileroVad.MinSpeechDuration = 0.25f;
+        config.SileroVad.MaxSpeechDuration = float.MaxValue;
+        config.SileroVad.WindowSize = WindowSize;
+        config.SampleRate = SampleRate;
+
+        // Buffer size in seconds — how much audio the detector can hold
+        // internally before segments must be drained. 60s is comfortably
+        // larger than any single VAD segment we expect.
+        _vad = new VoiceActivityDetector(config, 60);
     }
 
     public List<VadSegment> Run(float[] audio)
     {
-        int minSilenceSamples = (int)(MinSilenceDurationSec * SampleRate);
-        int speechPadSamples = (int)(SpeechPadSec * SampleRate);
+        var results = new List<VadSegment>();
+        int numIter = audio.Length / WindowSize;
 
-        // v5 combined state tensor [2, 1, 128] (reset per call), fed back each step
-        var state = new float[2 * 1 * StateDim];
-
-        // Rolling 64-sample context carried from the tail of the previous chunk
-        // (zeros for the very first chunk) — model input is context(64) + chunk(512) = 576.
-        var context = new float[ContextSamples];
-
-        var probs = new List<float>();
-
-        int totalChunks = (int)Math.Ceiling((double)audio.Length / WindowSizeSamples);
-
-        for (int i = 0; i < totalChunks; i++)
+        for (int i = 0; i < numIter; i++)
         {
-            int start = i * WindowSizeSamples;
-            int end = Math.Min(start + WindowSizeSamples, audio.Length);
-            var chunk = new float[WindowSizeSamples]; // zero-padded if needed
-            Array.Copy(audio, start, chunk, 0, end - start);
-
-            var inputBuf = new float[ContextSamples + WindowSizeSamples];
-            Array.Copy(context, 0, inputBuf, 0, ContextSamples);
-            Array.Copy(chunk, 0, inputBuf, ContextSamples, WindowSizeSamples);
-
-            var inputTensor = new DenseTensor<float>(inputBuf, new[] { 1, inputBuf.Length });
-            var srTensor = new DenseTensor<long>(new[] { (long)SampleRate }, Array.Empty<int>());
-            var stateTensor = new DenseTensor<float>(state, new[] { 2, 1, StateDim });
-
-            var inputs = new List<NamedOnnxValue>
-            {
-                NamedOnnxValue.CreateFromTensor("input", inputTensor),
-                NamedOnnxValue.CreateFromTensor("sr", srTensor),
-                NamedOnnxValue.CreateFromTensor("state", stateTensor),
-            };
-
-            using var results = _session.Run(inputs);
-            var outputArr = results.First(r => r.Name == "output").AsEnumerable<float>().ToArray();
-            probs.Add(outputArr[0]);
-
-            var newState = results.First(r => r.Name == "stateN").AsEnumerable<float>().ToArray();
-            Array.Copy(newState, state, state.Length);
-
-            // Tail of this chunk becomes next iteration's context.
-            Array.Copy(chunk, WindowSizeSamples - ContextSamples, context, 0, ContextSamples);
+            var chunk = new float[WindowSize];
+            Array.Copy(audio, i * WindowSize, chunk, 0, WindowSize);
+            _vad.AcceptWaveform(chunk);
+            DrainSegments(results);
         }
 
-        return ProbaToSegments(probs, audio.Length, speechPadSamples, minSilenceSamples);
+        _vad.Flush();
+        DrainSegments(results);
+
+        return results;
     }
 
-    private List<VadSegment> ProbaToSegments(
-        List<float> probs, int totalSamples, int speechPad, int minSilence)
+    private void DrainSegments(List<VadSegment> results)
     {
-        var segments = new List<VadSegment>();
-        bool inSpeech = false;
-        int speechStart = 0;
-        int silenceCount = 0;
-
-        for (int i = 0; i < probs.Count; i++)
+        while (!_vad.IsEmpty())
         {
-            int sampleIdx = i * WindowSizeSamples;
-            if (probs[i] >= Threshold)
+            var segment = _vad.Front();
+            results.Add(new VadSegment
             {
-                if (!inSpeech)
-                {
-                    speechStart = Math.Max(0, sampleIdx - speechPad);
-                    inSpeech = true;
-                }
-                silenceCount = 0;
-            }
-            else
-            {
-                if (inSpeech)
-                {
-                    silenceCount += WindowSizeSamples;
-                    if (silenceCount >= minSilence)
-                    {
-                        int speechEnd = Math.Min(totalSamples, sampleIdx + speechPad);
-                        segments.Add(new VadSegment
-                        {
-                            StartSec = (double)speechStart / SampleRate,
-                            EndSec = (double)speechEnd / SampleRate,
-                        });
-                        inSpeech = false;
-                        silenceCount = 0;
-                    }
-                }
-            }
-        }
-
-        // Close any open segment
-        if (inSpeech)
-        {
-            segments.Add(new VadSegment
-            {
-                StartSec = (double)speechStart / SampleRate,
-                EndSec = (double)totalSamples / SampleRate,
+                StartSec = segment.Start / (double)SampleRate,
+                EndSec = (segment.Start + segment.Samples.Length) / (double)SampleRate,
             });
+            _vad.Pop();
         }
-
-        return segments;
     }
 
-    public void Dispose() => _session.Dispose();
+    public void Dispose() => _vad.Dispose();
 }
 
 public sealed class VadSegment

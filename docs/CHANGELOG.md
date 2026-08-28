@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — Semantic Ve
 
 ## [Unreleased]
 
+### Changed — Session 8 (VAD + diarization → sherpa-onnx)
+
+- Voice activity detection and speaker diarization now run on sherpa-onnx (`org.k2fsa.sherpa.onnx`) instead of hand-rolled ONNX. `SileroVadRunner` rewritten around the real `VoiceActivityDetector` API (verified via compile-driven discovery + the project's own real dotnet-examples source, not guessed). `EmbeddingRunner`, `SegmentationRunner`, and `SpeakerClusterer` (whose agglomerative clustering was never independently verified) are retired — replaced by a single `DiarizationRunner` wrapping `OfflineSpeakerDiarization`, which does segmentation, embedding, and clustering internally in one `Process()` call. `TranscriptService`'s diarization step now runs diarization once over the full audio and assigns each transcript segment the speaker of whichever diarization segment overlaps it most, instead of extracting one embedding per transcript segment.
+- Model sources switched to sherpa-onnx's own verified-compatible exports (`k2-fsa/sherpa-onnx` GitHub releases + `csukuangfj` HuggingFace mirrors) rather than the generic ONNX community exports used previously — different weight format/I/O contract than plain ONNX Runtime code would expect.
+- Functionally verified end-to-end with real synthesized speech (not just compiled): VAD correctly found the 3 spoken sentences (77.4% speech, silence/pauses excluded) and diarization found matching segment boundaries with a single consistent speaker.
+- TTS → sherpa-onnx Kokoro module deferred (BL-152) — its model needs a directory of files only shipped as a `.tar.bz2` archive, which the current single-file-per-entry manifest doesn't support yet.
+
 ### Changed — Session 7 (Whisper → Whisper.net)
 
 - Speech-to-text now runs on Whisper.net (whisper.cpp/GGML) instead of hand-rolled ONNX. `WhisperRunner` rewritten around the real `WhisperFactory`/`WhisperProcessorBuilder`/`WhisperProcessor` API (verified via DLL string extraction before writing any code, then confirmed by a clean compile). Model manifest simplified from 4 files/~6.2GB (ONNX encoder+decoder+external data) to 1 file/~3.1GB (`ggml-large-v3.bin`). Functionally verified end-to-end with a real synthesized speech clip (Windows SAPI) transcribed through `ggml-tiny.bin` — correct text and timestamps, not just a compile check.

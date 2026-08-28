@@ -1,10 +1,10 @@
 [
   {
     "id": "silero-vad",
-    "displayName": "Silero VAD v5",
+    "displayName": "Silero VAD (sherpa-onnx)",
     "feature": "Voice Activity Detection",
     "files": [
-      { "fileName": "silero_vad.onnx", "sizeBytes": 2327524, "sha256": "", "url": "https://raw.githubusercontent.com/snakers4/silero-vad/master/src/silero_vad/data/silero_vad.onnx" }
+      { "fileName": "silero_vad.onnx", "sizeBytes": 643854, "sha256": "", "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx" }
     ]
   },
   {
@@ -17,18 +17,18 @@
   },
   {
     "id": "pyannote-seg",
-    "displayName": "pyannote Speaker Segmentation 3.0",
+    "displayName": "pyannote Speaker Segmentation 3.0 (sherpa-onnx)",
     "feature": "Speaker Segmentation",
     "files": [
-      { "fileName": "pyannote-seg-3.0.onnx", "sizeBytes": 5986908, "sha256": "", "url": "https://huggingface.co/onnx-community/pyannote-segmentation-3.0/resolve/main/onnx/model.onnx" }
+      { "fileName": "pyannote-seg-3.0.onnx", "sizeBytes": 5992913, "sha256": "", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-pyannote-segmentation-3-0/resolve/main/model.onnx" }
     ]
   },
   {
     "id": "wespeaker-ecapa",
-    "displayName": "WeSpeaker ECAPA-TDNN",
+    "displayName": "WeSpeaker ResNet34-LM (sherpa-onnx)",
     "feature": "Speaker Embedding",
     "files": [
-      { "fileName": "wespeaker-ecapa-tdnn.onnx", "sizeBytes": 24861931, "sha256": "", "url": "https://huggingface.co/Wespeaker/wespeaker-ecapa-tdnn512-LM/resolve/main/voxceleb_ECAPA512_LM.onnx" }
+      { "fileName": "wespeaker_en_voxceleb_resnet34_LM.onnx", "sizeBytes": 26530550, "sha256": "", "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/wespeaker_en_voxceleb_resnet34_LM.onnx" }
     ]
   },
   {

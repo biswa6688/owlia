@@ -141,16 +141,28 @@ public sealed class TranscriptService : ITranscriptService
 
         if (File.Exists(pyPath) && File.Exists(wePath) && whisperSegments.Count > 0)
         {
-            using var embRunner = new EmbeddingRunner(wePath);
-            var embeddings = new float[whisperSegments.Count][];
+            using var diarizationRunner = new DiarizationRunner(pyPath, wePath);
+            var diarSegments = diarizationRunner.Diarize(audio);
+
             for (int i = 0; i < whisperSegments.Count; i++)
             {
-                int startSample = (int)(whisperSegments[i].StartSec * 16000);
-                int endSample = Math.Min((int)(whisperSegments[i].EndSec * 16000), audio.Length);
-                var chunk = audio.AsSpan(startSample, Math.Max(1, endSample - startSample)).ToArray();
-                embeddings[i] = embRunner.GetEmbedding(chunk);
+                // Assign the speaker of whichever diarization segment overlaps
+                // this whisper segment the most (by overlap duration).
+                var wStart = whisperSegments[i].StartSec;
+                var wEnd = whisperSegments[i].EndSec;
+                DiarizationSegment? best = null;
+                double bestOverlap = 0;
+                foreach (var d in diarSegments)
+                {
+                    var overlap = Math.Min(wEnd, d.EndSec) - Math.Max(wStart, d.StartSec);
+                    if (overlap > bestOverlap)
+                    {
+                        bestOverlap = overlap;
+                        best = d;
+                    }
+                }
+                speakerLabels[i] = best is not null ? $"Speaker {best.Speaker}" : "Speaker 0";
             }
-            speakerLabels = SpeakerClusterer.Cluster(embeddings);
         }
         else
         {

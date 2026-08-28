@@ -15,13 +15,17 @@ public static class CliApi
 
     public static void MapCliApi(this WebApplication app)
     {
-        // GET /api/cli/status  → { claude: bool, opencode: bool }
+        // GET /api/cli/status  → { claude: bool, opencode: bool, claudeVersion?: string, opencodeVersion?: string }
         app.MapGet("/api/cli/status", () =>
         {
+            var claudeVer = GetVersion("claude");
+            var opencodeVer = GetVersion("opencode");
             return Results.Ok(new
             {
                 claude = Which("claude"),
                 opencode = Which("opencode"),
+                claudeVersion = claudeVer,
+                opencodeVersion = opencodeVer,
             });
         });
 
@@ -133,6 +137,26 @@ public static class CliApi
             return p.ExitCode == 0;
         }
         catch { return false; }
+    }
+
+    private static string? GetVersion(string name)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo(name, "--version")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            using var p = Process.Start(psi)!;
+            p.WaitForExit(3000);
+            if (p.ExitCode != 0) return null;
+            var output = p.StandardOutput.ReadToEnd().Trim();
+            return string.IsNullOrWhiteSpace(output) ? null : output;
+        }
+        catch { return null; }
     }
 
     private static async Task<string?> GetOrBuildContextFileAsync(

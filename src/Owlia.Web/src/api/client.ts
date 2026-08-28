@@ -68,6 +68,8 @@ export interface Session {
 export interface CliStatus {
   claude: boolean
   opencode: boolean
+  claudeVersion?: string
+  opencodeVersion?: string
 }
 
 // ── API calls ─────────────────────────────────────────────────────────────────

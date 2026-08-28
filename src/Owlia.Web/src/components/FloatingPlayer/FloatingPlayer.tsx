@@ -362,13 +362,13 @@ export function FloatingPlayer({
                 onChange={e => setVol(+e.target.value)} />
 
               {/* Waveform toggle */}
-              <button onClick={() => setShowWaveform(v => !v)}
+              <button onClick={() => { setShowWaveform(v => !v); setShowSpectrogram(false) }}
                 style={{ ...btn(), border: showWaveform ? '1px solid var(--accent)' : '1px solid var(--border)', color: showWaveform ? 'var(--accent)' : 'var(--text)', background: showWaveform ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'transparent', borderRadius: 100, padding: '2px 6px', gap: 2, display: 'flex', alignItems: 'center' }}>
                 <Activity size={10} />
               </button>
 
               {/* Spectrogram toggle */}
-              <button onClick={() => setShowSpectrogram(v => !v)}
+              <button onClick={() => { setShowSpectrogram(v => !v); setShowWaveform(false) }}
                 style={{ ...btn(), border: showSpectrogram ? '1px solid var(--accent)' : '1px solid var(--border)', color: showSpectrogram ? 'var(--accent)' : 'var(--text)', background: showSpectrogram ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'transparent', borderRadius: 100, padding: '2px 6px', gap: 2, display: 'flex', alignItems: 'center' }}>
                 <AudioLines size={10} />
               </button>

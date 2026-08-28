@@ -6,13 +6,14 @@ import { startHub, getHub } from '../../api/signalr'
 import { Nav } from '../../components/Nav/Nav'
 import { ProgressBar } from '../../components/UI/ProgressBar'
 import {
-  Terminal, CheckCircle, Copy, Check, Cpu,
+  CheckCircle, Copy, Check,
   DownloadIcon, Mic, Users, BarChart2, FileText, Volume2, Activity, AlertCircle, Pause, X, RefreshCw,
+  ClaudeLogo, OpenCodeLogo,
 } from '../../components/Icons/icons'
 
 const CLIS = [
-  { name: 'Claude Code', slug: 'claude' as const, icon: Terminal, color: 'var(--accent)', desc: 'Anthropic CLI agent', installCmd: 'npm install -g @anthropic-ai/claude-code' },
-  { name: 'OpenCode', slug: 'opencode' as const, icon: Cpu, color: 'var(--accent-copper)', desc: 'Open-source CLI agent', installCmd: 'npm install -g opencode' },
+  { name: 'Claude Code', slug: 'claude' as const, icon: ClaudeLogo, color: '#d97706', desc: 'Anthropic CLI agent', installCmd: 'npm install -g @anthropic-ai/claude-code' },
+  { name: 'OpenCode', slug: 'opencode' as const, icon: OpenCodeLogo, color: '#6366f1', desc: 'Open-source CLI agent', installCmd: 'npm install -g opencode' },
 ] as const
 
 const MODEL_ICONS: Record<string, typeof Mic> = {

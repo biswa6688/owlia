@@ -40,12 +40,29 @@ public sealed class TranscriptService : ITranscriptService
 
     // ── ITranscriptService ────────────────────────────────────────────────
 
-    public Task<string> AnalyzeAsync(string filePath, CancellationToken ct = default)
+    public async Task<string> AnalyzeAsync(string filePath, CancellationToken ct = default)
     {
         var sessionId = Guid.NewGuid().ToString("N");
 
-        // Run on a background thread with its own DI scope so the DbContext
-        // is not disposed when the originating HTTP request scope ends.
+        // Persist the session row synchronously, before returning, so it's
+        // guaranteed to exist by the time the caller gets sessionId back.
+        // Without this, the frontend's immediate GET /api/transcript/{id}
+        // (fired the instant analyze() resolves) can race ahead of the
+        // background pipeline below and 404 on a session that "doesn't
+        // exist yet" — it does, this write just hadn't landed.
+        await _repo.AddAsync(new SessionEntity
+        {
+            Id = sessionId,
+            FileName = Path.GetFileName(filePath),
+            FilePath = filePath,
+            DurationSeconds = 0,
+            SpeakerCount = 0,
+            CreatedAt = DateTime.UtcNow,
+        }, ct);
+
+        // Run the heavy pipeline on a background thread with its own DI scope
+        // so the DbContext is not disposed when the originating HTTP request
+        // scope ends.
         _ = Task.Run(async () =>
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
@@ -60,7 +77,7 @@ public sealed class TranscriptService : ITranscriptService
             }
         }, CancellationToken.None);
 
-        return Task.FromResult(sessionId);
+        return sessionId;
     }
 
     public async Task<TranscriptResult?> GetTranscriptAsync(string sessionId, CancellationToken ct = default)
@@ -81,18 +98,8 @@ public sealed class TranscriptService : ITranscriptService
 
     private async Task RunPipelineAsync(string filePath, string sessionId, ISessionRepository repo, CancellationToken ct)
     {
-        // ── 1. Persist session record ──────────────────────────────────────
-        var fileName = Path.GetFileName(filePath);
-        var session = new SessionEntity
-        {
-            Id = sessionId,
-            FileName = fileName,
-            FilePath = filePath,
-            DurationSeconds = 0,
-            SpeakerCount = 0,
-            CreatedAt = DateTime.UtcNow,
-        };
-        await repo.AddAsync(session, ct);
+        // Session row is already persisted synchronously in AnalyzeAsync
+        // before this background task starts — see the comment there.
 
         // ── 2. Load audio ──────────────────────────────────────────────────
         await _notifier.ProgressAsync(sessionId, "audio", 5);

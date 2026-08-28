@@ -219,6 +219,23 @@ Status: `[ ]` todo · `[~]` in-progress · `[x]` done · `[!]` blocked
 | ID | Task | Notes |
 |---|---|---|
 | BL-170 | `[x]` Fix `/api/media/analyze` always returning "File not found" | Root cause: frontend read `File.path`, an Electron-only property — doesn't exist in WebView2/browsers, silently fell back to bare filename. **This broke Playground analysis entirely, for every input method.** Fixed with a real upload step: `POST /api/media/upload` (multipart) saves bytes server-side, returns the real path. Kestrel body-size limit and multipart form limit both raised (loopback-only, single-user — safe). Round 1 fix missed a second bug — the shared axios instance's default `Content-Type: application/json` persists over `FormData` and blocks the browser's multipart boundary negotiation; needs `headers: {'Content-Type': undefined}` on the upload call. Both bugs reproduced and fixed verified in a real Edge browser (not curl, which doesn't exhibit the header bug) |
+| BL-171 | `[x]` Real Claude/OpenCode brand icons | Sourced from simple-icons (CC0), wired into Download page CLI cards + `CliPanel.tsx` badge/selector/empty-state. Screenshot-verified |
+
+---
+
+## Epic 20 — Critical Fix: Transcript 404 Race Condition (2026-08-28)
+
+| ID | Task | Notes |
+|---|---|---|
+| BL-190 | `[x]` Fix `GET /api/transcript/{id}` 404 immediately after analyze | Root cause: session row was inserted inside the background pipeline `Task.Run`, but `sessionId` was returned to the caller before that write landed — frontend's immediate session-restore fetch could race ahead of it. Fixed by making the session-row insert synchronous in `AnalyzeAsync`, awaited before the id is returned. Verified with zero-delay upload→analyze→fetch: now `200 {"segments":[]}`, not `404` |
+
+---
+
+## Epic 19 — Playground Layout: VS Code-style Activity Bar (in progress)
+
+| ID | Task | Notes |
+|---|---|---|
+| BL-180 | `[ ]` Right-side icon rail (Chat/Sentiment/Transcript/Summary), click opens as single active panel | Replaces the current always-visible multi-column tab layout |
 
 ---
 

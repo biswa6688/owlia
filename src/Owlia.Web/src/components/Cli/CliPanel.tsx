@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Send, Terminal, Loader2, AlertCircle, ChevronDown, Check } from '../Icons/icons'
+import { Send, Loader2, AlertCircle, ChevronDown, Check, ClaudeLogo, OpenCodeLogo } from '../Icons/icons'
 import type { HubConnection } from '@microsoft/signalr'
 import { cliApi, type CliStatus } from '../../api/client'
 import { joinSession } from '../../api/signalr'
@@ -13,9 +13,9 @@ interface Props {
   sessionId: string | null
 }
 
-const CLI_META: Record<string, { label: string; icon: string; color: string }> = {
-  claude:   { label: 'Claude',   icon: 'C', color: '#d97706' },
-  opencode: { label: 'OpenCode', icon: 'O', color: '#6366f1' },
+const CLI_META: Record<string, { label: string; Icon: typeof ClaudeLogo; color: string }> = {
+  claude:   { label: 'Claude',   Icon: ClaudeLogo,   color: '#d97706' },
+  opencode: { label: 'OpenCode', Icon: OpenCodeLogo, color: '#6366f1' },
 }
 
 export function CliPanel({ sessionId }: Props) {
@@ -130,7 +130,7 @@ export function CliPanel({ sessionId }: Props) {
               background: `${meta.color}18`, border: `1px solid ${meta.color}33`,
               fontWeight: 800, fontSize: '0.85rem', color: meta.color,
             }}>
-              {meta.icon}
+              <meta.Icon size={16} style={{ color: meta.color }} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: '0.82rem' }}>{meta.label}</div>
@@ -152,7 +152,7 @@ export function CliPanel({ sessionId }: Props) {
                     {Object.entries(CLI_META).filter(([k]) => cliStatus?.[k as keyof CliStatus]).map(([key, m]) => (
                       <button key={key} type="button" onClick={() => { setSelectedCli(key as 'claude' | 'opencode'); setCliDropdown(false) }}
                         style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', cursor: 'pointer', background: key === selectedCli ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent', border: 'none', textAlign: 'left', fontSize: '0.75rem', fontWeight: key === selectedCli ? 700 : 500, color: key === selectedCli ? 'var(--accent)' : 'var(--text)' }}>
-                        <div style={{ width: 22, height: 22, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${m.color}18`, fontWeight: 800, fontSize: '0.7rem', color: m.color }}>{m.icon}</div>
+                        <div style={{ width: 22, height: 22, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${m.color}18`, fontWeight: 800, fontSize: '0.7rem', color: m.color }}><m.Icon size={12} style={{ color: m.color }} /></div>
                         <span>{m.label}</span>
                         {key === selectedCli && <span style={{ marginLeft: 'auto', opacity: 0.5 }}><Check size={10} /></span>}
                       </button>
@@ -167,7 +167,7 @@ export function CliPanel({ sessionId }: Props) {
         {/* ── Empty chat state ─────────────────────────────────────────── */}
         <div style={{ flex: '1 1 0', minHeight: 0, overflow: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, textAlign: 'center' }}>
           <div style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${meta.color}12`, border: `1px solid ${meta.color}25` }}>
-            <Terminal size={18} style={{ color: meta.color, opacity: 0.5 }} />
+            <meta.Icon size={18} style={{ color: meta.color, opacity: 0.5 }} />
           </div>
           <p style={{ fontSize: '0.78rem', fontWeight: 600, margin: 0, opacity: 0.5 }}>Waiting for analysis</p>
           <p style={{ fontSize: '0.70rem', color: 'var(--text-muted)', margin: 0, maxWidth: 220, opacity: 0.5 }}>
@@ -202,7 +202,7 @@ export function CliPanel({ sessionId }: Props) {
             background: `${meta.color}18`, border: `1px solid ${meta.color}33`,
             fontWeight: 800, fontSize: '0.85rem', color: meta.color,
           }}>
-            {meta.icon}
+            <meta.Icon size={16} style={{ color: meta.color }} />
           </div>
 
           {/* CLI name + version */}
@@ -258,7 +258,7 @@ export function CliPanel({ sessionId }: Props) {
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         background: `${m.color}18`, fontWeight: 800, fontSize: '0.7rem', color: m.color,
                       }}>
-                        {m.icon}
+                        <m.Icon size={12} style={{ color: m.color }} />
                       </div>
                       <span>{m.label}</span>
                       {key === selectedCli && <span style={{ marginLeft: 'auto', opacity: 0.5 }}><Check size={10} /></span>}
@@ -293,7 +293,7 @@ export function CliPanel({ sessionId }: Props) {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: `${meta.color}12`, border: `1px solid ${meta.color}25`,
             }}>
-              <Terminal size={18} style={{ color: meta.color, opacity: 0.6 }} />
+              <meta.Icon size={18} style={{ color: meta.color, opacity: 0.6 }} />
             </div>
             <p style={{ fontSize: '0.78rem', fontWeight: 600, margin: 0 }}>Ask anything</p>
             <p style={{ fontSize: '0.70rem', color: 'var(--text-muted)', margin: 0, maxWidth: 220 }}>

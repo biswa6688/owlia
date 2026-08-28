@@ -7,6 +7,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — Semantic Ve
 
 ## [Unreleased]
 
+### Fixed — Session 12 (race condition: transcript 404 right after analyze)
+
+- **Critical**: `GET /api/transcript/{id}` 404'd immediately after a successful `POST /api/media/analyze` for the same session. Root cause: `AnalyzeAsync` generated the session id, kicked off the entire pipeline (including the session-row DB insert) on a background `Task.Run`, and returned the id to the HTTP caller immediately — before the background task had necessarily even started. The frontend's session-restore effect fires the instant it receives a session id, so it could easily race ahead of the background write and query a session that "didn't exist yet" (it did — the insert just hadn't landed). Fixed by moving the session-row insert to run synchronously in `AnalyzeAsync`, awaited before the background pipeline starts and before the session id is returned — the row is now guaranteed to exist by the time any caller can possibly query it. Verified with the tightest possible race window: upload → analyze → immediately fetch transcript with zero artificial delay, in the same script — now returns `200 {"segments":[]}` instead of `404`.
+
+### Added — Session 11 (real Claude/OpenCode brand icons)
+
+- Claude and OpenCode CLI cards (Download page) and the chat panel's CLI badge/selector/empty-state icons now use the real brand marks instead of generic `Terminal`/`Cpu` icons — sourced from simple-icons (CC0), not approximated. New `icBrand()` icon helper renders solid-fill logos (vs. the existing line-icon helpers' stroke style).
+
 ### Fixed — Session 10 (media upload was completely broken)
 
 - **Critical**: `POST /api/media/analyze` always 400'd with "File not found" for any real user-selected file. Root cause: the frontend read `mediaFile.path`, an Electron-only `File` property that doesn't exist in a browser/WebView2 — it silently fell back to `mediaFile.name` (bare filename, no directory), which is never a valid path on disk. This affected every path to Playground analysis (file picker and drag-and-drop alike) — the app could never actually analyze anything a user provided. Fixed by adding a real upload step: new `POST /api/media/upload` (multipart/form-data) saves the file's bytes server-side and returns the real path, which the frontend now passes to `/api/media/analyze` instead of the nonexistent client path. Kestrel's default 30MB request body limit and ASP.NET's form multipart limit were both raised (disabled) to allow large video files — safe here since this is a loopback-only, single-user desktop app.

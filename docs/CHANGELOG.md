@@ -7,6 +7,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — Semantic Ve
 
 ## [Unreleased]
 
+### Fixed — Session 4 (Photino window rendering blank)
+
+- **Critical**: `Owlia.Host` window opened with correct native title bar but a permanently blank white content area — WebView2 was silently never initializing (confirmed via process tree: `msedgewebview2.exe` never spawned as a child of `Owlia.Host.exe`, with no exception or log error). Root cause: `Program.cs` used C# top-level statements, so the entry thread ran MTA (the .NET default); WebView2 requires an STA window-creating thread. Fixed by converting to an explicit `[STAThread] static void Main`. Verified via screenshot — same content that already rendered correctly in a real browser now renders identically inside the Photino window.
+- Kestrel port was previously hardcoded (5174 in dev via `appsettings.Development.json`, random `:0` in prod) with an `IsDevelopment()` branch. Unified into a single configurable `Owlia:Port` setting (`appsettings.json`, `Owlia__Port` env var, or `--Owlia:Port=` CLI arg; `0` = random) used in both environments. Frontend `vite.config.ts` dev-proxy target now reads `OWLIA_BACKEND_PORT` env var instead of a hardcoded constant.
+
 ### Added — Session 3 (feature gating, spectrum, CLI chat, session restore, installer)
 
 **Frontend**

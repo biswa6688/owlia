@@ -155,10 +155,11 @@ Hub groups: `session:{sessionId}` — clients call `JoinSession(sessionId)`.
 ## Runtime Conventions
 
 - `AppContext.BaseDirectory` — paths for data/, logs/, models/ all relative here
-- Kestrel `http://127.0.0.1:0` — random port read back via `IServerAddressesFeature`
+- Kestrel port is **configurable**: `Owlia:Port` in `appsettings.json` (default `5174`), overridable via `Owlia__Port` env var or `--Owlia:Port=xxxx` CLI arg. `0` = OS-assigned random port. Same code path handles both — `builder.WebHost.UseUrls($"http://127.0.0.1:{port}")`, actual bound address always read back via `IServerAddressesFeature` before creating the Photino window. Frontend dev proxy (`vite.config.ts`) reads the matching port from `OWLIA_BACKEND_PORT` env var (default `5174`) — **keep both in sync if you change the default**.
 - NAudio 3.x: `ISampleProvider.Read(Span<float>)` (not 3-arg array)
 - `dotnet-ef` tool: `C:\Users\Administrator\.dotnet\tools\dotnet-ef.exe`
 - All projects target `net10.0`; solution `owlia.slnx`
+- **`Program.cs` MUST use an explicit `[STAThread] static void Main`, never top-level statements.** WebView2 needs the window-creating thread to be STA (this matches Photino.NET's own official template). Without it, Photino creates a real native window (title bar renders, correct title, no exception, no error in log) but **never spawns the `msedgewebview2.exe` child process** — the content area is just permanently blank white. This is silent and easy to misdiagnose as a frontend/backend bug; it isn't. Diagnose by checking `Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" | Where ParentProcessId -eq <Owlia.Host.exe PID>` — if empty, this is the cause. Fixed 2026-08-28.
 
 ---
 
@@ -201,3 +202,5 @@ dotnet run --project src\Owlia.Host
 | CLI context cached per sessionId | `_contextCache` dict — no re-read per query; temp file written once |
 | InnoSetup no models | Models are ~5.7 GB — always downloaded at runtime |
 | `build.ps1` `-SkipInstaller` | Allows building without InnoSetup installed |
+| `[STAThread]` explicit `Main`, no top-level statements | WebView2 requires an STA window-creating thread; top-level statements can't carry the attribute. Missing it caused a silent blank-white window (native chrome rendered, WebView2 child process never spawned, no exception) |
+| `Owlia:Port` config key drives Kestrel binding in both dev and prod | Was previously hardcoded 5174 (dev, via appsettings Kestrel:Endpoints) vs. random 0 (prod, via UseUrls) with a branch on `IsDevelopment()`. Unified into one config-driven value so the port is actually configurable per user's request |

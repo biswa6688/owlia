@@ -2,8 +2,10 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite'
 
-// Backend dev port — must match appsettings.Development.json Kestrel endpoint
-const BACKEND = 'http://127.0.0.1:5174'
+// Backend dev port — must match Owlia.Host's "Owlia:Port" (appsettings.json,
+// default 5174). Override both sides together via OWLIA_BACKEND_PORT.
+const BACKEND_PORT = process.env.OWLIA_BACKEND_PORT ?? '5174'
+const BACKEND = `http://127.0.0.1:${BACKEND_PORT}`
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],

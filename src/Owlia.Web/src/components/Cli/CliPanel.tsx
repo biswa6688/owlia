@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Send, Terminal, Loader2, AlertCircle, ChevronDown } from '../Icons/icons'
+import { Send, Terminal, Loader2, AlertCircle, ChevronDown, Check } from '../Icons/icons'
 import type { HubConnection } from '@microsoft/signalr'
 import { cliApi, type CliStatus } from '../../api/client'
 import { joinSession } from '../../api/signalr'
@@ -145,7 +145,7 @@ export function CliPanel({ sessionId }: Props) {
                 <button type="button" onClick={() => setCliDropdown(v => !v)}
                   style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 8, cursor: 'pointer', background: 'var(--bg)', border: '1px solid var(--border)', fontSize: '0.68rem', fontWeight: 600, color: 'var(--text)' }}>
                   {meta.label}
-                  <ChevronDown size={10} style={{ opacity: 0.4, transform: cliDropdown ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.15s' }} />
+                  <ChevronDown size={10} style={{ opacity: 0.5, transform: cliDropdown ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.15s' }} />
                 </button>
                 {cliDropdown && (
                   <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 50, minWidth: 150, borderRadius: 10, overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
@@ -154,7 +154,7 @@ export function CliPanel({ sessionId }: Props) {
                         style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', cursor: 'pointer', background: key === selectedCli ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent', border: 'none', textAlign: 'left', fontSize: '0.75rem', fontWeight: key === selectedCli ? 700 : 500, color: key === selectedCli ? 'var(--accent)' : 'var(--text)' }}>
                         <div style={{ width: 22, height: 22, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${m.color}18`, fontWeight: 800, fontSize: '0.7rem', color: m.color }}>{m.icon}</div>
                         <span>{m.label}</span>
-                        {key === selectedCli && <span style={{ marginLeft: 'auto', fontSize: '0.6rem', opacity: 0.4 }}>✓</span>}
+                        {key === selectedCli && <span style={{ marginLeft: 'auto', opacity: 0.5 }}><Check size={10} /></span>}
                       </button>
                     ))}
                   </div>
@@ -167,7 +167,7 @@ export function CliPanel({ sessionId }: Props) {
         {/* ── Empty chat state ─────────────────────────────────────────── */}
         <div style={{ flex: '1 1 0', minHeight: 0, overflow: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, textAlign: 'center' }}>
           <div style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${meta.color}12`, border: `1px solid ${meta.color}25` }}>
-            <Terminal size={18} style={{ color: meta.color, opacity: 0.4 }} />
+            <Terminal size={18} style={{ color: meta.color, opacity: 0.5 }} />
           </div>
           <p style={{ fontSize: '0.78rem', fontWeight: 600, margin: 0, opacity: 0.5 }}>Waiting for analysis</p>
           <p style={{ fontSize: '0.70rem', color: 'var(--text-muted)', margin: 0, maxWidth: 220, opacity: 0.5 }}>
@@ -177,7 +177,7 @@ export function CliPanel({ sessionId }: Props) {
 
         {/* ── Disabled input ────────────────────────────────────────────── */}
         <div style={{ flexShrink: 0, padding: '10px 12px', borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '8px 10px', borderRadius: 12, background: 'var(--bg)', border: '1px solid var(--border)', opacity: 0.45 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '8px 10px', borderRadius: 12, background: 'var(--bg)', border: '1px solid var(--border)', opacity: 0.55 }}>
             <textarea value="" readOnly rows={1} placeholder="Run analysis to start chatting…"
               style={{ flex: 1, resize: 'none', background: 'transparent', outline: 'none', fontSize: '0.80rem', color: 'var(--text)', maxHeight: 80, opacity: 1, fontFamily: 'inherit', cursor: 'not-allowed' }} />
             <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--border)', border: 'none' }}>
@@ -261,7 +261,7 @@ export function CliPanel({ sessionId }: Props) {
                         {m.icon}
                       </div>
                       <span>{m.label}</span>
-                      {key === selectedCli && <span style={{ marginLeft: 'auto', fontSize: '0.6rem', opacity: 0.4 }}>✓</span>}
+                      {key === selectedCli && <span style={{ marginLeft: 'auto', opacity: 0.5 }}><Check size={10} /></span>}
                     </button>
                   ))}
                 </div>
@@ -373,11 +373,11 @@ export function CliPanel({ sessionId }: Props) {
           </button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, padding: '0 2px' }}>
-          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', opacity: 0.5 }}>
+          <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>
             Enter to send · Shift+Enter newline
           </span>
           {version && (
-            <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', opacity: 0.4, fontFamily: 'monospace' }}>
+            <span style={{ fontSize: '0.60rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
               {version}
             </span>
           )}

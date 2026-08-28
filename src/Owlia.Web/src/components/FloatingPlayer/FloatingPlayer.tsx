@@ -270,7 +270,7 @@ export function FloatingPlayer({
           cursor: isDragging ? 'grabbing' : 'grab',
         }}
       >
-        <GripHorizontal size={12} style={{ opacity: 0.3, flexShrink: 0 }} />
+        <GripHorizontal size={12} style={{ opacity: 0.4, flexShrink: 0 }} />
         <Video size={12} style={{ color: 'var(--accent)', flexShrink: 0 }} />
         <span style={{ fontSize: '0.70rem', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {mediaFile?.name || 'Media Player'}
@@ -297,7 +297,7 @@ export function FloatingPlayer({
                 onTimeUpdate={onTimeUpdate} onLoadedMetadata={onMeta}
                 onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, opacity: 0.2, cursor: 'pointer', padding: 20 }} onClick={() => fileInputRef.current?.click()}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, opacity: 0.35, cursor: 'pointer', padding: 20 }} onClick={() => fileInputRef.current?.click()}>
                 <Video size={32} /><p style={{ fontSize: '0.78rem' }}>Drop or click to load</p>
               </div>
             )}
@@ -329,7 +329,7 @@ export function FloatingPlayer({
               </button>
               <button onClick={() => skip(10)} style={btn()} title="+10s"><SkipForward size={12} /></button>
 
-              <span style={{ fontSize: '0.62rem', fontFamily: 'monospace', opacity: 0.4, minWidth: 64, textAlign: 'center' }}>
+              <span style={{ fontSize: '0.62rem', fontFamily: 'monospace', opacity: 0.55, minWidth: 64, textAlign: 'center' }}>
                 {fmtTime(currentSec)} / {fmtTime(durationSec)}
               </span>
 
@@ -394,7 +394,7 @@ export function FloatingPlayer({
                 <div style={{ width: '100%', height: 2, background: 'var(--border)', borderRadius: 1, overflow: 'hidden' }}>
                   <div style={{ width: `${progress ?? 0}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.3s' }} />
                 </div>
-                <p style={{ textAlign: 'right', fontSize: '0.55rem', opacity: 0.3, marginTop: 1 }}>{stageLabel}</p>
+                <p style={{ textAlign: 'right', fontSize: '0.60rem', color: 'var(--text-muted)', marginTop: 1 }}>{stageLabel}</p>
               </div>
             )}
           </div>
@@ -404,7 +404,7 @@ export function FloatingPlayer({
       {/* ── Resize handle ─────────────────────────────────────────────── */}
       {!minimized && !maximized && (
         <div onMouseDown={onResizeStart} style={{ position: 'absolute', bottom: 0, right: 0, width: 16, height: 16, cursor: 'nwse-resize', display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', padding: 2 }}>
-          <svg width="10" height="10" viewBox="0 0 10 10" style={{ opacity: 0.25 }}>
+          <svg width="10" height="10" viewBox="0 0 10 10" style={{ opacity: 0.35 }}>
             <line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" strokeWidth="1" />
             <line x1="9" y1="5" x2="5" y2="9" stroke="currentColor" strokeWidth="1" />
           </svg>

@@ -334,7 +334,7 @@ export function Landing() {
                             <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text)' }}>
                               Speaker {line.speaker}
                             </span>
-                            <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)' }}>
+                            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>
                               {line.time}
                             </span>
                           </div>
@@ -367,7 +367,7 @@ export function Landing() {
                                 }}
                               />
                             </div>
-                            <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)' }}>
+                            <span style={{ fontSize: '0.60rem', color: 'var(--text-muted)' }}>
                               {Math.round(line.sentiment * 100)}%
                             </span>
                           </div>
@@ -386,7 +386,7 @@ export function Landing() {
                       padding: '6px 14px',
                       borderTop: '1px solid var(--border)',
                       background: 'var(--surface)',
-                      fontSize: '0.58rem', color: 'var(--text-muted)',
+                      fontSize: '0.62rem', color: 'var(--text-muted)',
                     }}
                   >
                     <span>3 speakers · 4 min 12 sec</span>

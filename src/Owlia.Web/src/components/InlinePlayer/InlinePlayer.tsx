@@ -206,7 +206,7 @@ export function InlinePlayer({
             onTimeUpdate={onTimeUpdate} onLoadedMetadata={onMeta}
             onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, opacity: 0.2, cursor: 'pointer', padding: 20 }} onClick={() => fileInputRef.current?.click()}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, opacity: 0.35, cursor: 'pointer', padding: 20 }} onClick={() => fileInputRef.current?.click()}>
             <Video size={32} /><p style={{ fontSize: '0.78rem' }}>Drop or click to load</p>
           </div>
         )}
@@ -238,7 +238,7 @@ export function InlinePlayer({
           </button>
           <button onClick={() => skip(10)} style={btn()} title="+10s"><SkipForward size={12} /></button>
 
-          <span style={{ fontSize: '0.62rem', fontFamily: 'monospace', opacity: 0.4, minWidth: 64, textAlign: 'center' }}>
+          <span style={{ fontSize: '0.62rem', fontFamily: 'monospace', opacity: 0.55, minWidth: 64, textAlign: 'center' }}>
             {fmtTime(currentSec)} / {fmtTime(durationSec)}
           </span>
 
@@ -301,7 +301,7 @@ export function InlinePlayer({
             <div style={{ width: '100%', height: 2, background: 'var(--border)', borderRadius: 1, overflow: 'hidden' }}>
               <div style={{ width: `${progress ?? 0}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.3s' }} />
             </div>
-            <p style={{ textAlign: 'right', fontSize: '0.55rem', opacity: 0.3, marginTop: 1 }}>{stageLabel}</p>
+            <p style={{ textAlign: 'right', fontSize: '0.60rem', color: 'var(--text-muted)', marginTop: 1 }}>{stageLabel}</p>
           </div>
         )}
       </div>

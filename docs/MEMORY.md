@@ -196,7 +196,11 @@ Script: `setup/owlia-setup.iss`
 See `docs/BACKLOG.md` for full task list.
 
 Current: BL-001 through BL-007 complete, plus BL-110/BL-111/BL-112 (theme system) done early since it was trivial alongside the frontend scaffold. `Owlia.Host` runs end-to-end: log4net initializes, EF Core migrates SQLite, Kestrel binds a random localhost port, Photino window loads the REAL built React app (`npm run build` → `src/Owlia.Host/wwwroot/` → served, verified via `curl`). Smoke-tested twice via `dotnet run` — confirmed working, process killed after each test.
-Next: BL-008 (first commit + push to GitHub `biswa6688/owlia`). After that, Epic 5 (Flash screen animation polish — current stub has the 5s auto-nav but no owl glow/letter-reveal animation yet).
+BL-008 done: committed (`66b6b49`) and force-pushed to `main` on `biswa6688/owlia`.
+
+**IMPORTANT — repo history note:** before this push, `origin/main` already had 8 unrelated commits (tip `ad2f6a0`, all dated 2026-08-28) from a different, more advanced OWLIA build — different architecture (`Owlia.App`/`Owlia.Ipc`/`Owlia.Media`/`Owlia.Nlp`/`Owlia.Speech`/`Owlia.AiCli` projects, `frontend/` folder, Inno Setup installer already wired, more docs — 137 files vs this scaffold's 63). That was very likely a separate concurrent session/agent working the same request. The user was shown this conflict explicitly and chose to force-push and discard it rather than merge. That old tip is not referenced by any branch now but may still be fetchable by SHA (`ad2f6a0`) until GitHub garbage-collects it — if the user ever asks to recover something from "the other version," check there first before saying it's gone.
+
+Next: Epic 5 (Flash screen animation polish — current stub has the 5s auto-nav but no owl glow/letter-reveal animation yet).
 
 ### Frontend scaffold (Owlia.Web) — BL-004 detail
 - Vite config: `build.outDir` set to `../Owlia.Host/wwwroot`, `emptyOutDir: true` — `npm run build` from `src/Owlia.Web` drops straight into the host's static folder, no copy step needed.

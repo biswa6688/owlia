@@ -15,7 +15,7 @@ Status: `[ ]` todo · `[~]` in-progress · `[x]` done · `[!]` blocked
 | BL-005 | `[x]` Configure Photino.NET to serve built React | `wwwroot` static serving wired; empty until BL-004 builds + copies `dist/` |
 | BL-006 | `[x]` Set up Log4Net with rolling file appender | `logs/owlia.log` next to exe (`AppContext.BaseDirectory`), console appender too |
 | BL-007 | `[x]` Set up SQLite + EF Core, DbContext, migrations | `data/owlia.db` next to exe; `InitialCreate` migration verified — tables created on startup |
-| BL-008 | `[ ]` Git init, .gitignore, push to GitHub | `biswa6688/owlia` — repo/.git present, not yet committed |
+| BL-008 | `[x]` Git init, .gitignore, push to GitHub | `biswa6688/owlia` — force-pushed to `main` (`66b6b49`). Remote had unrelated prior work (8 commits, tip `ad2f6a0`, different arch: Owlia.App/Ipc/Media/Nlp/Speech) — user explicitly chose to overwrite it. Old tip may still be fetchable by SHA until GitHub GCs it. |
 
 **NuGet packages:**
 - `Owlia.Host`: `Photino.NET`, `Microsoft.AspNetCore`, `Microsoft.AspNetCore.SignalR`, `log4net`, `Newtonsoft.Json`

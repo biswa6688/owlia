@@ -20,6 +20,7 @@ export function Playground() {
 
   const [tab, setTab]               = useState<Tab>('transcript')
   const [subtitle, setSubtitle]     = useState('')
+  const [showPlayer, setShowPlayer] = useState(false)
 
   useEffect(() => { refreshModels() }, [refreshModels])
 
@@ -50,7 +51,7 @@ export function Playground() {
 
   // ── File load ──────────────────────────────────────────────────────
   const loadFile = (f: File) => {
-    store.reset(); store.setMediaFile(f); setSubtitle('')
+    store.reset(); store.setMediaFile(f); setSubtitle(''); setShowPlayer(true)
   }
 
   // ── Analyse ────────────────────────────────────────────────────────
@@ -107,22 +108,24 @@ export function Playground() {
 
   return (
     <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)', overflow: 'hidden' }}>
-      <Nav />
+      <Nav showPlayer={showPlayer} onTogglePlayer={() => setShowPlayer(v => !v)} />
 
-      {/* Floating player popup — positioned via CSS fixed */}
-      <FloatingPlayer
-        mediaUrl={store.mediaUrl}
-        mediaFile={store.mediaFile}
-        subtitle={subtitle}
-        onFileLoad={loadFile}
-        onSeek={onSeek}
-        onAnalyse={canAnalyse ? analyse : undefined}
-        canAnalyse={canAnalyse}
-        needsModel={needsModel}
-        isAnalysing={isAnalysing}
-        stageLabel={isAnalysing ? STAGE_LABEL[store.stage] : undefined}
-        progress={isAnalysing ? store.progress : undefined}
-      />
+      {/* Floating player popup — shown only when toggled on */}
+      {showPlayer && (
+        <FloatingPlayer
+          mediaUrl={store.mediaUrl}
+          mediaFile={store.mediaFile}
+          subtitle={subtitle}
+          onFileLoad={loadFile}
+          onSeek={onSeek}
+          onAnalyse={canAnalyse ? analyse : undefined}
+          canAnalyse={canAnalyse}
+          needsModel={needsModel}
+          isAnalysing={isAnalysing}
+          stageLabel={isAnalysing ? STAGE_LABEL[store.stage] : undefined}
+          progress={isAnalysing ? store.progress : undefined}
+        />
+      )}
 
       {/* Tabs panel — fills the full screen behind the floating player */}
       <div style={{

@@ -24,38 +24,32 @@ export function Nav() {
         <span style={{ fontWeight: 700, fontSize: '1.05rem', letterSpacing: '0.03em' }}>OWLIA</span>
       </Link>
 
-      <nav className="flex items-center gap-3 text-sm font-medium">
+      <nav className="flex items-center gap-1 text-sm font-medium">
         {LINKS.map(({ to, label }) => {
-          const isActive = active(to)
-          const isPill = to !== '/playground'
-
+          const isAct = active(to)
           return (
             <Link
               key={to}
               to={to}
-              className="transition-all"
+              className="transition-colors"
               style={{
                 textDecoration: 'none',
                 fontSize: '0.82rem',
-                fontWeight: isActive ? 700 : 500,
-                color: isActive ? 'var(--accent)' : 'var(--text)',
-                ...(isPill
-                  ? {
-                      padding: '5px 14px',
-                      borderRadius: 100,
-                      border: `1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}`,
-                      background: isActive ? 'var(--accent)' : 'var(--surface)',
-                      ...(isActive ? { color: '#1a1210' } : {}),
-                    }
-                  : {
-                      opacity: isActive ? 1 : 0.65,
-                    }),
+                fontWeight: isAct ? 700 : 500,
+                color: isAct ? 'var(--accent)' : 'var(--text-muted)',
+                padding: '6px 12px',
+                borderRadius: 8,
+                background: isAct ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent',
+                transition: 'background 0.15s, color 0.15s',
               }}
+              onMouseEnter={e => { if (!isAct) e.currentTarget.style.background = 'color-mix(in srgb, var(--text) 5%, transparent)' }}
+              onMouseLeave={e => { if (!isAct) e.currentTarget.style.background = 'transparent' }}
             >
               {label}
             </Link>
           )
         })}
+        <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 4px' }} />
         <ThemeToggle />
       </nav>
     </header>

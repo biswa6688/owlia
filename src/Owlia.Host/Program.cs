@@ -24,6 +24,12 @@ var dbPath = Path.Combine(dataDir, "owlia.db");
 // ── Web Application Builder ───────────────────────────────────────────────────
 var builder = WebApplication.CreateBuilder(args);
 
+// Ensure JSON responses use camelCase (matches frontend TypeScript interfaces)
+builder.Services.ConfigureHttpJsonOptions(opts =>
+{
+    opts.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+});
+
 // In Development: appsettings.Development.json fixes the port to 5174 so the
 // Vite dev-server proxy can forward /api and /hub to it.
 // In Production (served by Kestrel directly): bind to a random port; Photino
